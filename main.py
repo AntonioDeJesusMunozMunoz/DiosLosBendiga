@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from dev1_api import router as dev1_real_router
+from dev3_api import router as dev3_real_router
 
 @asynccontextmanager
 async def lifespan(app):
@@ -124,8 +125,8 @@ def post_resolve(id: str, req: ResolveRequest):
         "location_id": req.location_id or 100, "quantity": 3,
         "occurred_at": "2026-10-07T14:00:00Z", "reference": f"RESOLVED-{id}",
     }
+app.include_router(dev1_router)
 
 app.include_router(dev1_router)
 app.include_router(real_dev2_router)
-app.include_router(dev3_router)
-
+app.include_router(dev3_real_router)
