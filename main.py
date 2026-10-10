@@ -2,6 +2,10 @@
 main.py - Fake Inventory Service API (Temporary scaffolding for frontend team)
 Implements all 10 paths from openapi.yaml with fixed, deterministic demo responses.
 """
+from contextlib import asynccontextmanager
+from dev2_api import router as real_dev2_router
+import db, inventory_handlers, kafka_consumer
+
 from typing import Optional, Union
 from fastapi import FastAPI, APIRouter, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -10,7 +14,15 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-app = FastAPI(title="Servicio de inventario del taller (Fake API)", version="1.0.0")
+@asynccontextmanager
+async def lifespan(app):
+    db.init_db()
+    inventory_handlers.init_dev2_schema()   # creates my needs table
+    kafka_consumer.start()
+    yield
+    kafka_consumer.stop()
+
+app = FastAPI(title="Servicio de inventario del taller (Fake API)", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -190,5 +202,5 @@ def post_resolve(id: str, req: ResolveRequest):
     }
 
 app.include_router(dev1_router)
-app.include_router(dev2_router)
+app.include_router(real_dev2_router)
 app.include_router(dev3_router)
