@@ -1,14 +1,15 @@
 """
-dev1_api.py - Real read-only endpoints for Backend Dev 1
+dev1_api.py - Real endpoints for Backend Dev 1
 
-GET /parts/{part_id}/availability
-GET /parts/{part_id}/ledger
-
-Read-only: uses db.query()/query_one() and the existing helpers.
-Never writes, never opens tx(), never touches the outbox.
+GET  /parts/{part_id}/availability
+GET  /parts/{part_id}/ledger
+POST /transfers
+POST /counts
+POST /issues
 """
 import secrets
 from datetime import datetime, timezone
+from typing import Union
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 import db
@@ -37,6 +38,14 @@ class CountRequest(BaseModel):
     location_id: int
     reason: str
     lines: list[CountLine]
+
+
+class IssueRequest(BaseModel):
+    work_order_code: str
+    part_id: int
+    location_id: int
+    quantity: int = Field(ge=1)
+    issued_by: Union[int, str]
 
 
 @router.get("/parts/{part_id}/availability")
@@ -210,4 +219,111 @@ def post_count(req: CountRequest):
                 adjustments.append({"part_id": line.part_id, "delta": delta})
 
         return {"adjustments": adjustments}
+
+
+@router.post("/issues", status_code=201)
+def post_issue(req: IssueRequest):
+    if isinstance(req.issued_by, str):
+        if not req.issued_by.strip():
+            raise HTTPException(status_code=422, detail="El campo issued_by no puede estar vacío")
+        issued_by = req.issued_by.strip()
+    else:
+        issued_by = req.issued_by
+
+    work_order_code = req.work_order_code.strip()
+
+    with db.tx() as c:
+        wo = c.execute(
+            "SELECT work_order_id, code, deleted FROM work_orders WHERE code = ?",
+            (work_order_code,),
+        ).fetchone()
+        if not wo or wo["deleted"] == 1:
+            raise HTTPException(status_code=404, detail="Orden de trabajo no encontrada")
+
+        work_order_id = wo["work_order_id"]
+        stored_code = wo["code"]
+
+        part = c.execute("SELECT part_id FROM parts WHERE part_id = ?", (req.part_id,)).fetchone()
+        if not part:
+            raise HTTPException(status_code=404, detail="Pieza no encontrada")
+
+        loc = c.execute("SELECT location_id FROM locations WHERE location_id = ?", (req.location_id,)).fetchone()
+        if not loc:
+            raise HTTPException(status_code=404, detail="Ubicación no encontrada")
+
+        shelf_stock = db.on_hand_at(c, req.part_id, req.location_id)
+        if shelf_stock < req.quantity:
+            raise HTTPException(status_code=409, detail="Saldo insuficiente en la ubicación")
+
+        res_rows = c.execute(
+            """
+            SELECT id, quantity, issued_quantity
+            FROM reservations
+            WHERE work_order_id = ? AND part_id = ? AND status = 'active'
+            ORDER BY id ASC
+            """,
+            (work_order_id, req.part_id),
+        ).fetchall()
+
+        reserved_for_order = 0
+        for r in res_rows:
+            rem = r["quantity"] - r["issued_quantity"]
+            if rem > 0:
+                reserved_for_order += rem
+
+        consumed = min(req.quantity, reserved_for_order)
+        extra = req.quantity - consumed
+
+        if extra > 0 and extra > db.available_for_part(c, req.part_id):
+            raise HTTPException(
+                status_code=409,
+                detail="El saldo no reservado es insuficiente para cubrir la cantidad solicitada (reservado para otras órdenes)",
+            )
+
+        ts = now_iso()
+
+        movement_id = db.record_movement(
+            c, "issue", req.part_id, req.location_id, -req.quantity, ts, reference=stored_code
+        )
+
+        left_to_spread = consumed
+        for r in res_rows:
+            if left_to_spread <= 0:
+                break
+            rem = r["quantity"] - r["issued_quantity"]
+            if rem <= 0:
+                continue
+            take = min(rem, left_to_spread)
+            new_issued = r["issued_quantity"] + take
+            left_to_spread -= take
+            if new_issued >= r["quantity"]:
+                c.execute(
+                    "UPDATE reservations SET issued_quantity = ?, status = 'fulfilled' WHERE id = ?",
+                    (new_issued, r["id"]),
+                )
+            else:
+                c.execute(
+                    "UPDATE reservations SET issued_quantity = ? WHERE id = ?",
+                    (new_issued, r["id"]),
+                )
+
+        event_data = {
+            "work_order_id": work_order_id,
+            "part_id": req.part_id,
+            "location_id": req.location_id,
+            "quantity": req.quantity,
+            "issued_by": issued_by,
+        }
+        db.enqueue_event(c, "stock.issued", stored_code, event_data, ts)
+
+        return {
+            "movement_id": movement_id,
+            "type": "issue",
+            "part_id": req.part_id,
+            "location_id": req.location_id,
+            "quantity": -req.quantity,
+            "occurred_at": ts,
+            "reference": stored_code,
+        }
+
 
