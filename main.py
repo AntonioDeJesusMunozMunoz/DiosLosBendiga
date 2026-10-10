@@ -1,17 +1,31 @@
 """
-main.py - Fake Inventory Service API (Temporary scaffolding for frontend team)
-Implements all 10 paths from openapi.yaml with fixed, deterministic demo responses.
+main.py - Inventory Service API
+Real endpoints: GET /parts/{id}/availability, GET /parts/{id}/ledger  (dev1_api.py)
+Fake  endpoints: POST /issues, /transfers, /counts  (Dev 1 stubs)
+                 GET+POST for Dev 2 and Dev 3 (stubs, replaced later)
 """
 from typing import Optional, Union
-from fastapi import FastAPI, APIRouter, HTTPException, Request, status
+from fastapi import FastAPI, APIRouter, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-app = FastAPI(title="Servicio de inventario del taller (Fake API)", version="1.0.0")
+import db
+from dev1_api import router as dev1_real_router
 
+# ---------- app ---------------------------------------------------------------
+app = FastAPI(title="Servicio de inventario del taller", version="1.0.0")
+
+# Ensure tables exist both at import time (in-process tests) and at ASGI startup
+db.init_db()
+
+@app.on_event("startup")
+def _startup():
+    db.init_db()
+
+# ---------- CORS --------------------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -20,18 +34,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Custom exception handlers ensuring {"detail": "<plain string>"} format
+# ---------- error handlers ({"detail": "<plain string>"} everywhere) -----------
 @app.exception_handler(RequestValidationError)
-async def validation_handler(request: Request, exc: RequestValidationError):
-    errors = [f"{' -> '.join(str(x) for x in e.get('loc', []))}: {e.get('msg', 'error')}" for e in exc.errors()]
+async def _validation_handler(request: Request, exc: RequestValidationError):
+    errors = [
+        f"{' -> '.join(str(x) for x in e.get('loc', []))}: {e.get('msg', 'error')}"
+        for e in exc.errors()
+    ]
     return JSONResponse(status_code=422, content={"detail": "; ".join(errors)})
 
 @app.exception_handler(StarletteHTTPException)
-async def http_handler(request: Request, exc: StarletteHTTPException):
+async def _http_handler(request: Request, exc: StarletteHTTPException):
     return JSONResponse(status_code=exc.status_code, content={"detail": str(exc.detail)})
 
-# ==================== DEV 1 ROUTER (Ledger & Stock) ====================
-dev1_router = APIRouter(tags=["Dev 1 - Ledger & Stock"])
+# ==================== DEV 1 — real GET routes (dev1_api.py) ===================
+app.include_router(dev1_real_router)
+
+# ==================== DEV 1 — fake POST stubs =================================
+dev1_router = APIRouter(tags=["Dev 1 - Ledger & Stock (Fake stubs)"])
 
 class IssueRequest(BaseModel):
     work_order_code: str
@@ -55,37 +75,6 @@ class CountRequest(BaseModel):
     reason: str
     lines: list[CountLine]
 
-@dev1_router.get("/parts/{part_id}/availability")
-def get_availability(part_id: int):
-    if part_id == 999:
-        raise HTTPException(404, "Pieza no encontrada")
-    if part_id == 1004:  # Awkward case: zero stock
-        return {
-            "part_id": 1004, "on_hand": 0, "reserved": 0, "available": 0,
-            "locations": [{"location_id": 100, "code": "U-100", "on_hand": 0, "reserved": 0, "available": 0}],
-        }
-    return {
-        "part_id": part_id, "on_hand": 18, "reserved": 3, "available": 15,
-        "locations": [
-            {"location_id": 100, "code": "U-100", "on_hand": 10, "reserved": 0, "available": 10},
-            {"location_id": 101, "code": "U-101", "on_hand": 8, "reserved": 0, "available": 8},
-        ],
-    }
-
-@dev1_router.get("/parts/{part_id}/ledger")
-def get_ledger(part_id: int):
-    if part_id == 999:
-        raise HTTPException(404, "Pieza no encontrada")
-    return {
-        "part_id": part_id,
-        "entries": [
-            {"movement_id": 4, "type": "issue", "part_id": part_id, "location_id": 101, "quantity": -2, "occurred_at": "2026-10-05T14:00:00Z", "reference": "R061026001", "balance": 18},
-            {"movement_id": 3, "type": "transfer_in", "part_id": part_id, "location_id": 101, "quantity": 10, "occurred_at": "2026-10-03T11:00:00Z", "reference": "TR-001", "balance": 20},
-            {"movement_id": 2, "type": "transfer_out", "part_id": part_id, "location_id": 100, "quantity": -10, "occurred_at": "2026-10-03T11:00:00Z", "reference": "TR-001", "balance": 10},
-            {"movement_id": 1, "type": "receipt", "part_id": part_id, "location_id": 100, "quantity": 20, "occurred_at": "2026-10-03T10:00:00Z", "reference": "PR-1001", "balance": 20},
-        ],
-    }
-
 @dev1_router.post("/issues", status_code=201)
 def post_issue(req: IssueRequest):
     if req.part_id == 999 or req.work_order_code == "UNKNOWN":
@@ -93,8 +82,9 @@ def post_issue(req: IssueRequest):
     if req.quantity > 50:
         raise HTTPException(409, "Saldo insuficiente en la ubicación")
     return {
-        "movement_id": 101, "type": "issue", "part_id": req.part_id, "location_id": req.location_id,
-        "quantity": -req.quantity, "occurred_at": "2026-10-06T12:00:00Z", "reference": req.work_order_code,
+        "movement_id": 101, "type": "issue", "part_id": req.part_id,
+        "location_id": req.location_id, "quantity": -req.quantity,
+        "occurred_at": "2026-10-06T12:00:00Z", "reference": req.work_order_code,
     }
 
 @dev1_router.post("/transfers", status_code=201)
@@ -104,8 +94,10 @@ def post_transfer(req: TransferRequest):
     if req.quantity > 50:
         raise HTTPException(409, "Saldo insuficiente en ubicación origen")
     return {
-        "movement_id": 102, "type": "transfer_out", "part_id": req.part_id, "location_id": req.from_location_id,
-        "quantity": -req.quantity, "occurred_at": "2026-10-06T12:05:00Z", "reference": f"TR-{req.from_location_id}-{req.to_location_id}",
+        "movement_id": 102, "type": "transfer_out", "part_id": req.part_id,
+        "location_id": req.from_location_id, "quantity": -req.quantity,
+        "occurred_at": "2026-10-06T12:05:00Z",
+        "reference": f"TR-{req.from_location_id}-{req.to_location_id}",
     }
 
 @dev1_router.post("/counts", status_code=201)
@@ -114,11 +106,16 @@ def post_count(req: CountRequest):
         raise HTTPException(422, "El motivo del conteo es obligatorio")
     if req.location_id == 999:
         raise HTTPException(404, "Ubicación no encontrada")
-    adjustments = [{"part_id": line.part_id, "delta": line.counted_quantity - 10} for line in req.lines if line.counted_quantity != 10]
+    adjustments = [
+        {"part_id": line.part_id, "delta": line.counted_quantity - 10}
+        for line in req.lines if line.counted_quantity != 10
+    ]
     return {"adjustments": adjustments}
 
-# ==================== DEV 2 ROUTER (Materials & Shortages) ====================
-dev2_router = APIRouter(tags=["Dev 2 - Materials & Shortages"])
+app.include_router(dev1_router)
+
+# ==================== DEV 2 — fake stubs =====================================
+dev2_router = APIRouter(tags=["Dev 2 - Materials & Shortages (Fake stubs)"])
 
 @dev2_router.get("/work-orders/{code}/materials")
 def get_materials(code: str):
@@ -127,18 +124,22 @@ def get_materials(code: str):
     return {
         "work_order_id": 2001, "code": code,
         "lines": [
-            {"inspection_item_id": 701, "bom_line_id": 501, "part_id": 1001, "name": "Rodamiento rígido 6204-2RS", "required": 5, "reserved": 3, "issued": 2, "missing": 0},
-            {"inspection_item_id": 702, "bom_line_id": 502, "part_id": 1004, "name": "Tornillo Allen M8x25 Grado 12.9", "required": 4, "reserved": 0, "issued": 0, "missing": 4},
+            {"inspection_item_id": 701, "bom_line_id": 501, "part_id": 1001,
+             "name": "Rodamiento rígido 6204-2RS", "required": 5, "reserved": 3, "issued": 2, "missing": 0},
+            {"inspection_item_id": 702, "bom_line_id": 502, "part_id": 1004,
+             "name": "Tornillo Allen M8x25 Grado 12.9", "required": 4, "reserved": 0, "issued": 0, "missing": 4},
         ],
     }
 
 @dev2_router.get("/shortages")
 def get_shortages(work_order_code: Optional[str] = None, part_id: Optional[int] = None):
     all_shortages = [
-        # Normal open shortage (on part 1004 with zero stock)
-        {"work_order_id": 2002, "work_order_code": "R061026002", "part_id": 1004, "name": "Tornillo Allen M8x25 Grado 12.9", "missing_quantity": 4, "inspection_item_id": 702, "opened_at": "2026-10-06T11:00:00Z"},
-        # Awkward case: part_id null and missing_quantity null
-        {"work_order_id": 2002, "work_order_code": "R061026002", "part_id": None, "name": "Kit especial sin identificar", "missing_quantity": None, "inspection_item_id": 703, "opened_at": "2026-10-06T11:05:00Z"},
+        {"work_order_id": 2002, "work_order_code": "R061026002", "part_id": 1004,
+         "name": "Tornillo Allen M8x25 Grado 12.9", "missing_quantity": 4,
+         "inspection_item_id": 702, "opened_at": "2026-10-06T11:00:00Z"},
+        {"work_order_id": 2002, "work_order_code": "R061026002", "part_id": None,
+         "name": "Kit especial sin identificar", "missing_quantity": None,
+         "inspection_item_id": 703, "opened_at": "2026-10-06T11:05:00Z"},
     ]
     items = [
         s for s in all_shortages
@@ -147,8 +148,10 @@ def get_shortages(work_order_code: Optional[str] = None, part_id: Optional[int] 
     ]
     return {"items": items}
 
-# ==================== DEV 3 ROUTER (Purchases & Matching) ====================
-dev3_router = APIRouter(tags=["Dev 3 - Purchasing & Matching"])
+app.include_router(dev2_router)
+
+# ==================== DEV 3 — fake stubs =====================================
+dev3_router = APIRouter(tags=["Dev 3 - Purchasing & Matching (Fake stubs)"])
 
 class ResolveRequest(BaseModel):
     part_id: int
@@ -156,23 +159,22 @@ class ResolveRequest(BaseModel):
 
 @dev3_router.get("/reorder-suggestions")
 def get_reorder_suggestions():
-    # Awkward case: one reorder suggestion (on part 1004 with zero stock)
     return {
         "items": [
-            {"part_id": 1004, "sku": "TOR-M8-25", "name": "Tornillo Allen M8x25 Grado 12.9", "suggested_quantity": 10, "work_order_ids": [2002]}
+            {"part_id": 1004, "sku": "TOR-M8-25", "name": "Tornillo Allen M8x25 Grado 12.9",
+             "suggested_quantity": 10, "work_order_ids": [2002]}
         ]
     }
 
 @dev3_router.get("/unmatched-receipts")
 def get_unmatched_receipts():
-    # Awkward case: one unmatched receipt (id 1, purchase_line_id 801 consistent with seed)
     return {
         "items": [
             {
                 "id": 1, "purchase_line_id": 801, "part_number": "UNKNOWN-BEARING-44",
                 "description": "Rodamiento desconocido recibido", "quantity": 3,
-                "unit_price": "250.00", "currency": "MXN", "received_at": "2026-10-07T12:00:00Z",
-                "work_order_code": "R061026001",
+                "unit_price": "250.00", "currency": "MXN",
+                "received_at": "2026-10-07T12:00:00Z", "work_order_code": "R061026001",
             }
         ]
     }
@@ -189,6 +191,5 @@ def post_resolve(id: str, req: ResolveRequest):
         "occurred_at": "2026-10-07T14:00:00Z", "reference": f"RESOLVED-{id}",
     }
 
-app.include_router(dev1_router)
-app.include_router(dev2_router)
 app.include_router(dev3_router)
+
