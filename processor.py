@@ -42,12 +42,6 @@ class Processor:
         """Returns 'ok' | 'duplicate' | 'parked' | 'dlq'."""
         try:
             ev = json.loads(raw)
-            
-            # TEMPORARY: skip purchasing events without processing or DLQ.
-            # They will be replayed after Dev 3's real handler is integrated.
-            if topic == "shop.purchasing":
-                return "skipped"
-
         except (ValueError, TypeError) as e:
             self.dlq_sink(key, raw, "invalid_json", str(e))
             return "dlq"
