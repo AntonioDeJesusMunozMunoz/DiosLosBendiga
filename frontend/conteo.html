@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conteo Cíclico - Taller</title>
+    <link rel="stylesheet" href="css/1-c.css">
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+</head>
+<body>
+    <div class="phone">
+        <div class="phone-btn" id="phone-btn-1"></div>
+        <div class="phone-btn" id="phone-btn-2"></div>
+        <div class="phone-btn" id="phone-btn-3"></div>
+        
+        <div class="phone-screen">
+            <h1>Conteo Cíclico</h1>
+
+            <div id="reader-container">
+                <div id="reader"></div>
+            </div>
+            
+            <button id="toggleScanBtn" class="action-btn scan-trigger">📷 Activar Escáner</button>
+
+            <div class="scan-card active-target" data-field="location">
+                <label>1. UBICACIÓN A CONTAR</label>
+                <div class="value" id="val-location">Toca para escanear (ej. U-102)</div>
+            </div>
+
+            <div class="scan-card" data-field="reason">
+                <label>2. MOTIVO DEL CONTEO</label>
+                <input type="text" id="input-reason" placeholder="Ej. Auditoría semanal" style="width:100%; border:none; background:transparent; font-size:12px; font-family:'Montserrat'; font-weight:700;">
+            </div>
+
+            <div class="scan-card" data-field="lines">
+                <label>3. PIEZAS ESCANEADAS</label>
+                <div id="lines-container" style="font-size:11px; color:#555; margin-top:4px;">Sin piezas agregadas</div>
+            </div>
+
+            <button id="confirmBtn" class="action-btn confirm">Guardar Ajuste</button>
+
+            <div id="alert-box"></div>
+        </div>
+
+        <nav>
+            <ul>
+                <li onclick="location.href='salida.html'">Piso</li>
+                <li onclick="location.href='transferencias.html'">Almacén</li>
+                <li class="active" onclick="location.href='conteo.html'">Conteo</li>
+            </ul>
+        </nav>
+    </div>
+
+    <script src="conteo.js"></script>
+</body>
+</html>

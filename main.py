@@ -21,9 +21,9 @@ from dev1_api import router as dev1_real_router
 async def lifespan(app):
     db.init_db()
     inventory_handlers.init_dev2_schema()   # creates my needs table
-    kafka_consumer.start()
+    #kafka_consumer.start()
     yield
-    kafka_consumer.stop()
+    #kafka_consumer.stop()
 
 # ---------- app ---------------------------------------------------------------
 app = FastAPI(title="Servicio de inventario del taller", version="1.0.0", lifespan=lifespan)

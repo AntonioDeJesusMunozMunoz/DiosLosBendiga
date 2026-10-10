@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transferencias - Taller</title>
+    <link rel="stylesheet" href="css/1-c.css">
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+</head>
+<body>
+    <div class="phone">
+        <div class="phone-btn" id="phone-btn-1"></div>
+        <div class="phone-btn" id="phone-btn-2"></div>
+        <div class="phone-btn" id="phone-btn-3"></div>
+        
+        <div class="phone-screen">
+            <h1>Transferencia de Stock</h1>
+
+            <div id="reader-container">
+                <div id="reader"></div>
+            </div>
+            
+            <button id="toggleScanBtn" class="action-btn scan-trigger">📷 Activar Escáner</button>
+
+            <div class="scan-card active-target" data-field="from" onclick="setStep('from')">
+                <label>1. UBICACIÓN ORIGEN</label>
+                <div class="value" id="val-from">Toca para escanear (ej. U-100)</div>
+            </div>
+
+            <div class="scan-card" data-field="to" onclick="setStep('to')">
+                <label>2. UBICACIÓN DESTINO</label>
+                <div class="value" id="val-to">Toca para escanear (ej. U-105)</div>
+            </div>
+
+            <div class="scan-card" data-field="part" onclick="setStep('part')">
+                <label>3. PIEZA / SKU</label>
+                <div class="value" id="val-part">Toca para escanear pieza</div>
+            </div>
+
+            <div class="scan-card" data-field="qty">
+                <label>4. CANTIDAD</label>
+                <input type="number" id="input-qty" value="1" min="1" style="width:100%; border:none; background:transparent; font-size:13px; font-family:'Montserrat'; font-weight:900;">
+            </div>
+
+            <button id="confirmBtn" class="action-btn confirm">Confirmar Transferencia</button>
+
+            <div id="alert-box"></div>
+        </div>
+
+        <nav>
+            <ul>
+                <li onclick="location.href='salida.html'">Piso</li>
+                <li class="active" onclick="location.href='transferencias.html'">Almacén</li>
+                <li onclick="location.href='conteo.html'">Conteo</li>
+            </ul>
+        </nav>
+    </div>
+
+    <script src="transferencias.js"></script>
+</body>
+</html>

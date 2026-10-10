@@ -1,0 +1,227 @@
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;900&display=swap");
+
+:root {
+  --phone-color: #444252;
+  --accent-color: #27ae60;
+  --danger-color: #c0392b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background-color: #eee;
+  font-family: "Montserrat", sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  overflow: hidden;
+  margin: 0;
+}
+
+.phone {
+  position: relative;
+  border: 7px solid var(--phone-color);
+  border-radius: 20px;
+  height: 620px;
+  width: 320px;
+  background: #fff;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.phone-screen {
+  position: relative;
+  width: 100%;
+  height: calc(100% - 60px);
+  border-radius: 13px 13px 0 0;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: #f9f9f9;
+}
+
+.phone-btn {
+  position: absolute;
+  background-color: var(--phone-color);
+  width: 10px;
+  height: 50px;
+  z-index: 100;
+}
+
+#phone-btn-1 { top: 100px; left: -10px; border-radius: 5px 0 0 5px; }
+#phone-btn-2 { top: 160px; left: -10px; border-radius: 5px 0 0 5px; }
+#phone-btn-3 { top: 100px; right: -10px; height: 100px; border-radius: 0 5px 5px 0; }
+
+h1 {
+  font-size: 14px;
+  margin: 0 0 10px 0;
+  color: #333;
+  text-align: center;
+  font-weight: 900;
+}
+
+/* Contenedor de la cámara adaptado, centrado y con altura fija ideal */
+#reader-container {
+  width: 100%;
+  height: 220px;
+  display: none; /* Se mostrará con JavaScript al activar la cámara */
+  margin-bottom: 10px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+#reader {
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+  border-radius: 8px;
+  background: transparent !important;
+  position: relative;
+}
+
+/* Forzar al video interno a redimensionarse y centrarse correctamente */
+#reader video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center center !important;
+  border-radius: 8px;
+}
+
+#reader__dashboard_section_csr {
+  font-size: 10px !important;
+  color: #fff !important;
+}
+
+#reader img {
+  display: none !important;
+}
+
+.scan-card {
+  width: 100%;
+  background: #fff;
+  border: 2px solid #ddd;
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.scan-card.active-target {
+  border-color: #2980b9;
+  background: #ebf5fb;
+}
+
+.scan-card label {
+  font-size: 10px;
+  color: #777;
+  display: block;
+  font-weight: 600;
+}
+
+.scan-card .value {
+  font-size: 13px;
+  font-weight: 900;
+  color: #333;
+  margin-top: 2px;
+}
+
+.action-btn {
+  width: 100%;
+  padding: 12px;
+  font-size: 13px;
+  font-family: "Montserrat", sans-serif;
+  border: none;
+  border-radius: 8px;
+  background-color: var(--phone-color);
+  color: #fff;
+  cursor: pointer;
+  font-weight: 900;
+  margin-top: 5px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.action-btn.scan-trigger {
+  background-color: #2980b9;
+  margin-bottom: 10px;
+}
+
+.action-btn.confirm {
+  background-color: var(--accent-color);
+}
+
+.action-btn:active {
+  transform: scale(0.98);
+}
+
+#alert-box {
+  width: 100%;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  text-align: center;
+  margin-top: 10px;
+  display: none;
+}
+
+#alert-box.success {
+  background-color: #d4efdf;
+  color: #196f3d;
+  border: 1px solid #a9dfbf;
+  display: block;
+}
+
+#alert-box.error {
+  background-color: #fadbd8;
+  color: #78281f;
+  border: 1px solid #f5b7b1;
+  display: block;
+}
+
+nav {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+}
+
+nav ul {
+  background-color: #fff;
+  display: flex;
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  height: 60px;
+  border-top: 1px solid #ddd;
+  border-radius: 0 0 13px 13px;
+}
+
+nav li {
+  color: #777;
+  cursor: pointer;
+  flex: 1;
+  padding: 10px;
+  text-align: center;
+  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  font-weight: 600;
+}
+
+nav li.active {
+  color: var(--phone-color);
+  font-weight: 900;
+  border-bottom: 3px solid var(--phone-color);
+}
