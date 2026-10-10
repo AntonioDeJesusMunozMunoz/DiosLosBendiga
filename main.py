@@ -1,15 +1,15 @@
 """
 main.py - Inventory Service API
-Real endpoints: GET /parts/{id}/availability, GET /parts/{id}/ledger  (dev1_api.py)
-Fake  endpoints: POST /issues, /transfers, /counts  (Dev 1 stubs)
-                 GET+POST for Dev 2 and Dev 3 (stubs, replaced later)
+Real endpoints: GET /parts/{id}/availability, GET /parts/{id}/ledger,
+                POST /transfers, POST /counts, POST /issues  (dev1_api.py)
+Fake endpoints: GET+POST for Dev 2 and Dev 3 (stubs, replaced later)
 """
-from typing import Optional, Union
+from typing import Optional
 from fastapi import FastAPI, APIRouter, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 import db
@@ -47,32 +47,8 @@ async def _validation_handler(request: Request, exc: RequestValidationError):
 async def _http_handler(request: Request, exc: StarletteHTTPException):
     return JSONResponse(status_code=exc.status_code, content={"detail": str(exc.detail)})
 
-# ==================== DEV 1 — real GET routes (dev1_api.py) ===================
+# ==================== DEV 1 — real routes (dev1_api.py) =======================
 app.include_router(dev1_real_router)
-
-# ==================== DEV 1 — fake POST stubs =================================
-dev1_router = APIRouter(tags=["Dev 1 - Ledger & Stock (Fake stubs)"])
-
-class IssueRequest(BaseModel):
-    work_order_code: str
-    part_id: int
-    location_id: int
-    quantity: int = Field(ge=1)
-    issued_by: Union[int, str]
-
-@dev1_router.post("/issues", status_code=201)
-def post_issue(req: IssueRequest):
-    if req.part_id == 999 or req.work_order_code == "UNKNOWN":
-        raise HTTPException(404, "Pieza u orden no encontrada")
-    if req.quantity > 50:
-        raise HTTPException(409, "Saldo insuficiente en la ubicación")
-    return {
-        "movement_id": 101, "type": "issue", "part_id": req.part_id,
-        "location_id": req.location_id, "quantity": -req.quantity,
-        "occurred_at": "2026-10-06T12:00:00Z", "reference": req.work_order_code,
-    }
-
-app.include_router(dev1_router)
 
 # ==================== DEV 2 — fake stubs =====================================
 dev2_router = APIRouter(tags=["Dev 2 - Materials & Shortages (Fake stubs)"])
