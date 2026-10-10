@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>ROCEEL | Almacén inteligente</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <a class="brand" href="index.html"><img src="assets/roceel-logo.jpg"
+                    alt="Logo ROCEEL"><span><strong>ROCEEL</strong><small>Almacén inteligente</small></span></a>
+            <div class="nav-label">Operación</div>
+            <button class="menu-toggle" id="menuToggle" aria-label="Mostrar navegación" aria-expanded="false">☰
+                Menú</button>
+            <nav id="mainNav" aria-label="Navegación principal">
+                <a href="index.html" class="active" aria-current="page"><svg viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M3 3h7v7H3z M14 3h7v4h-7z M14 10h7v11h-7z M3 14h7v7H3z" />
+                    </svg><span>Resumen</span></a>
+                <a href="ordenes.html" class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M8 6h13 M8 12h13 M8 18h13 M3 6h.01 M3 12h.01 M3 18h.01" />
+                    </svg><span>Órdenes de trabajo</span></a>
+                <a href="inventario.html" class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M4 4h16v16H4z M4 9h16 M9 4v16" />
+                    </svg><span>Existencias y Kardex</span></a>
+                <a href="faltantes.html" class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                        stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M3 5h18v14H3z M3 7l9 6 9-6" />
+                    </svg><span>Compras por resolver</span></a>
+            </nav>
+            <div class="sidebar-footer">Sistema de almacén · ROCEEL</div>
+        </aside>
+        <div class="main-area">
+            <div class="topbar"><span class="breadcrumb">ROCEEL / Control de almacén</span><span class="topbar-tag">Almacén
+                    inteligente</span></div>
+            <main class="container">
+                <section class="welcome">
+                    <div>
+                        <h1>Resumen operativo</h1>
+                    </div>
+                    <button class="button button-dark" id="refreshDashboard">↻ Actualizar datos</button>
+                </section>
+                <div id="dashboardMessage" class="message" role="status">Cargando datos del almacén…</div>
+                <section class="metric-grid">
+                    <article class="metric">
+                        <div class="metric-icon green">↗</div>
+                        <div><span>Sugerencias de reabasto</span><strong id="suggestionCount">—</strong></div>
+                    </article>
+                    <article class="metric">
+                        <div class="metric-icon yellow">!</div>
+                        <div><span>Compras por resolver</span><strong id="receiptCount">—</strong></div>
+                    </article>
+                    <article class="metric">
+                        <div class="metric-icon slate">−</div>
+                        <div><span>Faltantes abiertos</span><strong id="shortageCount">—</strong></div>
+                    </article>
+                    <article class="metric">
+                        <div class="metric-icon slate">⌕</div>
+                        <div><span>Consulta rápida</span><a class="metric-link" href="ordenes.html">Buscar una orden
+                                →</a></div>
+                    </article>
+                </section>
+                <section class="section-head">
+                    <div>
+                        <h2>Señales y recomendaciones</h2>
+                    </div><span class="count-pill">Análisis heurístico</span>
+                </section>
+                <section id="insightsGrid" class="insights-grid" aria-live="polite">
+                    <article class="insight-card"><span class="insight-kicker">ANÁLISIS</span>
+                        <h3>Revisando operación…</h3>
+                        <p>Se calcularán prioridades al recibir los datos del servicio.</p>
+                    </article>
+                <!--Estas señales son recomendaciones basadas en faltantes, sugerencias y
+                    recepciones pendientes. El reconocimiento histórico de patrones —por ejemplo, consumo recurrente o
+                    estacionalidad— requiere datos históricos y lógica adicional en el backend-->
+                    <div>
+                        <h2>Sugerencias de reabasto</h2>
+                    </div><a class="inline-link" href="inventario.html">Consultar existencias ↗</a>
+                </section>
+                <section class="surface">
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Identificación</th>
+                                    <th>Pieza</th>
+                                    <th>Unidades sugeridas</th>
+                                    <th>Órdenes relacionadas</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="suggestionsBody">
+                                <tr>
+                                    <td colspan="5" class="empty">Cargando…</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+                <section class="section-head">
+                    <div>
+                        <h2>Faltantes abiertos</h2>
+                    </div><a class="inline-link" href="ordenes.html">Consultar orden ↗</a>
+                </section>
+                <section class="surface">
+                    <div class="table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Orden</th>
+                                    <th>Refacción</th>
+                                    <th>Faltante</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="shortagesBody">
+                                <tr>
+                                    <td colspan="4" class="empty">Cargando…</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+            </main>
+            <footer>ROCEEL <span>·</span> Almacén</footer>
+        </div>
+    </div>
+    <script src="js/app.js"></script>
+    <script src="js/dashboard.js"></script>
+</body>
+
+</html>
