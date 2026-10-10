@@ -1,136 +1,163 @@
 """
-TEST RUNNER: test_purchasing.py
-Ejecuta este archivo en tu terminal para probar tu código de Backend 3:
+Pruebas del Backend 3 (Compras). Correr con:
     python app/test_purchasing.py
 """
+import uuid
 
-from purchasing import match_part, handle_purchase_received
+from purchasing import (
+    match_part, handle_purchase_received, resolve_unmatched,
+    list_unmatched_receipts, list_reorder_suggestions,
+)
+
+T = "2026-10-09T18:00:00Z"
+LOCATIONS = {100: {"location_id": 100, "code": "U-100"}}
+CATALOG = [
+    {"part_id": 1, "sku": "7014 CTA/P4", "name": "RODAMIENTO DE PRECISION"},
+    {"part_id": 2, "sku": "TORNILLO 6X12", "name": "TORNILLO CABEZA ALLEN"},
+    {"part_id": 3, "sku": "ARANDELA CON SELLOS 8 MM", "name": "ARANDELA SELLADA"},
+    {"part_id": 4, "sku": "SKU_DUPLICADO", "name": "PIEZA A"},
+    {"part_id": 5, "sku": "SKU_DUPLICADO", "name": "PIEZA B"},
+    {"part_id": 6, "sku": None, "name": "SIN SKU"},
+]
+
+
+def nuevo_state():
+    return {
+        "shortages": {}, "unmatched_receipts": {}, "reorder_suggestions": {},
+        "movements": [], "reservations": {}, "processed_event_ids": set(),
+        "next_res_id": 1, "next_mov_id": 1,
+        "locations": dict(LOCATIONS), "catalog_parts": CATALOG,
+    }
+
+
+def compra(part_number, quantity, purpose="restock", line_id=1, work_order_code=None):
+    """El campo data de un purchase.item_received, como lo manda el taller."""
+    return {
+        "purchase_request_id": 88, "request_number": "2044", "line_id": line_id,
+        "part_number": part_number, "description": "Compra de prueba",
+        "quantity": quantity, "unit_price": "15.00", "currency": "MXN",
+        "purpose": purpose, "received_at": T, "work_order_code": work_order_code,
+    }
+
+
+def nuevo_id():
+    return str(uuid.uuid4())
+
+
+def tipos(events):
+    return [e["event_type"] for e in events]
 
 
 def run_tests():
-    print("==================================================")
-    print("🧪 INICIANDO PRUEBAS DE TU MÓDULO (BACKEND 3)...")
-    print("==================================================")
+    print("=" * 50)
+    print("PRUEBAS BACKEND 3 (COMPRAS)")
+    print("=" * 50)
 
-    # Catálogo simulado del taller
-    catalog = [
-        {"part_id": 1, "sku": "7014 CTA/P4", "name": "RODAMIENTO DE PRECISION"},
-        {"part_id": 2, "sku": "TORNILLO 6X12", "name": "TORNILLO CABEZA ALLEN"},
-        {"part_id": 3, "sku": "ARANDELA CON SELLOS 8 MM", "name": "ARANDELA SELLADA"},
-        # Dos piezas con el mismo SKU a propósito (para probar ambigüedad):
-        {"part_id": 4, "sku": "SKU_DUPLICADO", "name": "PIEZA A"},
-        {"part_id": 5, "sku": "SKU_DUPLICADO", "name": "PIEZA B"},
-    ]
+    # TEST 1: matching exacto
+    assert match_part("7014 CTA/P4", CATALOG) == 1, "❌ Test 1"
+    print("✔ Test 1: matching exacto.")
 
-    # ----------------------------------------------------
-    # TEST 1: Matching normal (exacto)
-    # ----------------------------------------------------
-    res = match_part("7014 CTA/P4", catalog)
-    assert res == 1, f"❌ Esperaba part_id 1, obtuve {res}"
-    print("✔ Test 1: Matching exacto pasó correctamente.")
+    # TEST 2: minúsculas y espacios (orillas y en medio)
+    assert match_part("   tornillo 6x12   ", CATALOG) == 2, "❌ Test 2a"
+    assert match_part("7014cta/p4", CATALOG) == 1, "❌ Test 2b"
+    print("✔ Test 2: matching tolerante.")
 
-    # ----------------------------------------------------
-    # TEST 2: Matching tolerante (minúsculas y espacios)
-    # ----------------------------------------------------
-    res = match_part("   tornillo 6x12   ", catalog)
-    assert res == 2, f"❌ Esperaba part_id 2, obtuve {res}"
-    print("✔ Test 2: Matching con minúsculas y espacios pasó correctamente.")
+    # TEST 3: pieza que no existe
+    assert match_part("PIEZA_FANTASMA_99", CATALOG) is None, "❌ Test 3"
+    print("✔ Test 3: pieza desconocida.")
 
-    # ----------------------------------------------------
-    # TEST 3: Pieza que no existe en el catálogo
-    # ----------------------------------------------------
-    res = match_part("PIEZA_FANTASMA_99", catalog)
-    assert res is None, f"❌ Esperaba None, obtuve {res}"
-    print("✔ Test 3: Pieza desconocida rechazada correctamente.")
+    # TEST 4: SKU ambiguo
+    assert match_part("SKU_DUPLICADO", CATALOG) is None, "❌ Test 4"
+    print("✔ Test 4: SKU ambiguo regresa None.")
 
-    # ----------------------------------------------------
-    # TEST 4: SKU duplicado / ambiguo
-    # ----------------------------------------------------
-    res = match_part("SKU_DUPLICADO", catalog)
-    assert res is None, f"❌ Esperaba None por ambigüedad, obtuve {res}"
-    print("✔ Test 4: SKU ambiguo protegido correctamente (retorna None).")
+    # TEST 5: compra para cliente (Regla 9)
+    s = nuevo_state()
+    events = handle_purchase_received(nuevo_id(), compra("7014 CTA/P4", 5, purpose="customer_order"), T, CATALOG, s)
+    assert events == [] and s["movements"] == [], "❌ Test 5: customer_order no debe tocar inventario"
+    print("✔ Test 5: customer_order ignorada.")
 
-    # ----------------------------------------------------
-    # TEST 5: Compra para cliente (Regla 9)
-    # ----------------------------------------------------
-    state = {
-        "stock_by_location": {},
-        "shortages": {},
-        "unmatched_receipts": {},
-        "reorder_suggestions": {},
-        "next_res_id": 1
-    }
-    customer_event = {
-        "purchase_line_id": 100,
-        "part_number": "7014 CTA/P4",
-        "quantity": 5,
-        "purpose": "customer_order"  # <--- REGLA 9
-    }
-    events = handle_purchase_received(customer_event, "2026-10-09T18:00:00Z", catalog, state)
-    assert len(events) == 0, f"❌ No debió emitir eventos para customer_order, emitió {len(events)}"
-    assert 1 not in state["stock_by_location"], "❌ No debió ingresar stock para customer_order"
-    print("✔ Test 5: Regla 9 (customer_order ignorada) pasó al 100%.")
+    # TEST 6: entrada en U-100, movimiento, reserva y faltante resuelto (Reglas 11 y 12)
+    s = nuevo_state()
+    s["shortages"][2] = [{"work_order_id": 501, "work_order_code": "R061026012", "quantity": 2, "inspection_item_id": 99}]
+    events = handle_purchase_received(nuevo_id(), compra("tornillo 6x12", 5, line_id=201, work_order_code="R061026012"), T, CATALOG, s)
+    t = tipos(events)
+    assert "stock.received" in t and "stock.reserved" in t and "stock.shortage_resolved" in t, f"❌ Test 6: eventos {t}"
+    mov = s["movements"][0]
+    assert mov["location_id"] == 100 and mov["quantity"] == 5 and mov["movement_id"] == 1, f"❌ Test 6: movimiento {mov}"
+    assert s["shortages"][2] == [], "❌ Test 6: el faltante debe quedar resuelto"
+    res = s["reservations"][1]
+    assert res["quantity"] == 2 and res["status"] == "active" and res["location_id"] == 100, f"❌ Test 6: reserva {res}"
+    reserved = next(e for e in events if e["event_type"] == "stock.reserved")
+    assert reserved["key"] == "R061026012", "❌ Test 6: la key de stock.reserved debe ser el código de la orden"
+    print("✔ Test 6: entrada en U-100, reserva guardada y faltante resuelto.")
 
-    # ----------------------------------------------------
-    # TEST 6: Llegada de compra que surte un faltante (Reglas 11 y 12)
-    # ----------------------------------------------------
-    state["shortages"][2] = [
-        {"work_order_id": 501, "work_order_code": "R061026012", "quantity": 2, "inspection_item_id": 99}
-    ]
+    # TEST 7: idempotencia (Regla 19)
+    s = nuevo_state()
+    eid = nuevo_id()
+    handle_purchase_received(eid, compra("7014 CTA/P4", 4), T, CATALOG, s)
+    otra_vez = handle_purchase_received(eid, compra("7014 CTA/P4", 4), T, CATALOG, s)
+    assert otra_vez == [] and len(s["movements"]) == 1, "❌ Test 7: un evento repetido no debe cambiar nada"
+    print("✔ Test 7: evento repetido ignorado.")
 
-    restock_event = {
-        "purchase_line_id": 201,
-        "part_number": "tornillo 6x12",
-        "quantity": 5,
-        "unit_cost": "15.00",
-        "currency": "MXN",
-        "purpose": "restock",
-        "work_order_code": "R061026012"
-    }
-    events = handle_purchase_received(restock_event, "2026-10-09T18:05:00Z", catalog, state)
+    # TEST 8: sin U-100 no se pierde la compra (Regla 20)
+    s = nuevo_state()
+    s["locations"] = {}
+    eid = nuevo_id()
+    try:
+        handle_purchase_received(eid, compra("7014 CTA/P4", 2), T, CATALOG, s)
+        assert False, "❌ Test 8: esperaba LookupError"
+    except LookupError:
+        pass
+    assert eid not in s["processed_event_ids"] and s["movements"] == [], "❌ Test 8: no debe marcarse procesado"
+    s["locations"] = dict(LOCATIONS)
+    handle_purchase_received(eid, compra("7014 CTA/P4", 2), T, CATALOG, s)
+    assert len(s["movements"]) == 1, "❌ Test 8: el reintento debe registrar la entrada"
+    print("✔ Test 8: sin U-100 la compra espera y luego entra.")
 
-    assert state["stock_by_location"][2][100] == 5, "❌ El stock en U-100 debe ser 5"
-    types = [e["event_type"] for e in events]
-    assert "stock.received" in types, "❌ Falta evento stock.received"
-    assert "stock.reserved" in types, "❌ Falta evento stock.reserved"
-    assert "stock.shortage_resolved" in types, "❌ Falta evento stock.shortage_resolved"
-    assert len(state["shortages"][2]) == 0, "❌ El faltante debió quedar resuelto y limpio"
-    print("✔ Test 6: Reglas 11 y 12 (Entrada a U-100 + Surtido prioritario) pasaron al 100%.")
-
-    # ----------------------------------------------------
-    # TEST 7: Sugerencias de Reorden / Compra (Regla 18)
-    # ----------------------------------------------------
-    # Supongamos que hay dos órdenes esperando la pieza 3 (ARANDELA):
-    # Orden 601 necesita 2 arandelas, Orden 602 necesita 3 arandelas (Total: 5)
-    state["shortages"][3] = [
+    # TEST 9: sugerencia de reorden (Regla 18)
+    s = nuevo_state()
+    s["shortages"][3] = [
         {"work_order_id": 601, "work_order_code": "R01", "quantity": 2, "inspection_item_id": 101},
-        {"work_order_id": 602, "work_order_code": "R02", "quantity": 3, "inspection_item_id": 102}
+        {"work_order_id": 602, "work_order_code": "R02", "quantity": 3, "inspection_item_id": 102},
     ]
+    events = handle_purchase_received(nuevo_id(), compra("ARANDELA CON SELLOS 8 MM", 2, work_order_code="R01"), T, CATALOG, s)
+    sug = next(e for e in events if e["event_type"] == "stock.reorder_suggested")
+    assert sug["data"]["suggested_quantity"] == 3 and sug["data"]["work_order_ids"] == [602], f"❌ Test 9: {sug['data']}"
+    tablero = list_reorder_suggestions(s, CATALOG)
+    assert tablero[0]["suggested_quantity"] == 3 and tablero[0]["sku"] == "ARANDELA CON SELLOS 8 MM", f"❌ Test 9: {tablero}"
+    print("✔ Test 9: sugerencia de reorden.")
 
-    # Llega una compra de solo 2 arandelas para la orden R01:
-    partial_purchase = {
-        "purchase_line_id": 301,
-        "part_number": "ARANDELA CON SELLOS 8 MM",
-        "quantity": 2,
-        "purpose": "restock",
-        "work_order_code": "R01"
-    }
-    events_reorder = handle_purchase_received(partial_purchase, "2026-10-09T18:10:00Z", catalog, state)
+    # TEST 10: recepción sin relacionar, resolver, 409 y 404
+    s = nuevo_state()
+    events = handle_purchase_received(nuevo_id(), compra("PROV-XYZ", 3, line_id=777), T, CATALOG, s)
+    assert tipos(events) == ["stock.unmatched_receipt"] and events[0]["key"] == "purchase_line:777", f"❌ Test 10: {events}"
+    pendientes = list_unmatched_receipts(s)
+    assert len(pendientes) == 1 and pendientes[0]["id"] == 777, f"❌ Test 10: {pendientes}"
+    result = resolve_unmatched(777, 1, s)
+    assert result["movement"]["type"] == "receipt" and result["movement"]["quantity"] == 3, f"❌ Test 10: {result['movement']}"
+    assert "stock.received" in tipos(result["events"]), "❌ Test 10: resolver debe emitir stock.received"
+    assert list_unmatched_receipts(s) == [], "❌ Test 10: ya no debe estar pendiente"
+    try:
+        resolve_unmatched(777, 1, s)
+        assert False, "❌ Test 10: resolver dos veces debe dar ValueError (409)"
+    except ValueError:
+        pass
+    try:
+        resolve_unmatched(999, 1, s)
+        assert False, "❌ Test 10: un id que no existe debe dar KeyError (404)"
+    except KeyError:
+        pass
+    print("✔ Test 10: sin relacionar, resolver, 409 y 404.")
 
-    # Debe emitirse stock.reorder_suggested avisando que todavía faltan 3 arandelas para la orden 602
-    types_reorder = [e["event_type"] for e in events_reorder]
-    assert "stock.reorder_suggested" in types_reorder, "❌ Falta evento stock.reorder_suggested"
+    # TEST 11: SKU ambiguo no entra solo
+    s = nuevo_state()
+    events = handle_purchase_received(nuevo_id(), compra("SKU_DUPLICADO", 1, line_id=888), T, CATALOG, s)
+    assert tipos(events) == ["stock.unmatched_receipt"] and s["movements"] == [], "❌ Test 11"
+    print("✔ Test 11: SKU ambiguo va a revisión manual.")
 
-    reorder_event = next(e for e in events_reorder if e["event_type"] == "stock.reorder_suggested")
-    assert reorder_event["data"]["suggested_quantity"] == 3, f"❌ Cantidad sugerida debe ser 3, obtuve {reorder_event['data']['suggested_quantity']}"
-    assert reorder_event["data"]["work_order_ids"] == [602], f"❌ work_order_ids debe ser [602], obtuve {reorder_event['data']['work_order_ids']}"
-    assert state["reorder_suggestions"][3]["suggested_quantity"] == 3, "❌ El estado de sugerencias debe guardar 3"
-
-    print("✔ Test 7: Regla 18 (Pizarrón de compras actualizado) pasó al 100%.")
-
-    print("==================================================")
-    print("🎉 ¡TODAS TUS 7 PRUEBAS PASARON EXITOSAMENTE!")
-    print("==================================================")
+    print("=" * 50)
+    print("🎉 TODAS LAS PRUEBAS PASARON (11)")
+    print("=" * 50)
 
 
 if __name__ == "__main__":

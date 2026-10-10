@@ -15,7 +15,7 @@ from typing import Any, Dict, List, Optional
 # ---------------------------------------------------------------------------
 # Global lock for thread‑safe mutations of the shared ``state`` dictionary.
 # ---------------------------------------------------------------------------
-_state_lock = threading.Lock()
+_state_lock = threading.RLock()
 
 # ---------------------------------------------------------------------------
 # Helper utilities
@@ -68,63 +68,52 @@ def match_part(part_number: str, catalog_parts: List[Dict[str, Any]]) -> Optiona
 # ---------------------------------------------------------------------------
 
 def handle_purchase_received(
+    event_id: str,
     event_data: Dict[str, Any],
     occurred_at: str,
     catalog_parts: List[Dict[str, Any]],
     state: Dict[str, Any],
 ) -> List[Dict[str, Any]]:
-    """Process a ``purchase.item_received`` event and return inventory events.
-    Idempotency is guaranteed by storing processed ``event_id`` values.
+    """Procesa un purchase.item_received y regresa los eventos a publicar.
+    event_id viene del SOBRE del evento (evento["event_id"]), no de data.
+    Si falta U-100 lanza LookupError y el evento NO queda procesado (se reintenta).
     """
-    # ---------------------------------------------------------------------
-    # Idempotency – skip already processed events
-    # ---------------------------------------------------------------------
-    event_id = event_data.get("event_id")
     with _state_lock:
         processed = state.setdefault("processed_event_ids", set())
         if event_id in processed:
             return []
-        processed.add(event_id)
 
-    # ---------------------------------------------------------------------
-    # Rule 9 – ignore customer orders
-    # ---------------------------------------------------------------------
-    if event_data.get("purpose") == "customer_order":
-        return []
+        # Regla 9: solo restock entra al almacén
+        if event_data.get("purpose") != "restock":
+            processed.add(event_id)
+            return []
 
-    # ---------------------------------------------------------------------
-    # Rule 10 – matching
-    # ---------------------------------------------------------------------
-    part_number = event_data.get("part_number", "")
-    part_id = match_part(part_number, catalog_parts)
+        # Regla 10: matching
+        part_number = event_data.get("part_number", "")
+        part_id = match_part(part_number, catalog_parts)
 
-    purchase_line_id = event_data.get("line_id") or event_data.get("purchase_line_id")
-    quantity = event_data.get("quantity", 0)
-    raw_price = event_data.get("unit_price") or event_data.get("unit_cost", "0.00")
-    try:
-        unit_cost = str(Decimal(str(raw_price)))
-    except Exception:
-        unit_cost = "0.00"
+        purchase_line_id = event_data.get("line_id") or event_data.get("purchase_line_id")
+        quantity = event_data.get("quantity", 0)
+        raw_price = event_data.get("unit_price") or event_data.get("unit_cost", "0.00")
+        try:
+            unit_cost = str(Decimal(str(raw_price)))
+        except Exception:
+            unit_cost = "0.00"
 
-    # ---------------------------------------------------------------------
-    # No match – store unmatched receipt and emit mandatory event
-    # ---------------------------------------------------------------------
-    if part_id is None:
-        unmatched = {
-            "id": purchase_line_id,
-            "purchase_line_id": purchase_line_id,
-            "part_number": part_number,
-            "description": event_data.get("description", ""),
-            "quantity": quantity,
-            "unit_price": unit_cost,
-            "currency": event_data.get("currency"),
-            "received_at": event_data.get("received_at", occurred_at),
-            "work_order_code": event_data.get("work_order_code"),
-        }
-        with _state_lock:
-            state.setdefault("unmatched_receipts", {})[purchase_line_id] = unmatched
-        return [
-            {
+        if part_id is None:
+            state.setdefault("unmatched_receipts", {})[purchase_line_id] = {
+                "id": purchase_line_id,
+                "purchase_line_id": purchase_line_id,
+                "part_number": part_number,
+                "description": event_data.get("description", ""),
+                "quantity": quantity,
+                "unit_price": unit_cost,
+                "currency": event_data.get("currency"),
+                "received_at": event_data.get("received_at", occurred_at),
+                "work_order_code": event_data.get("work_order_code"),
+                "status": "pending",
+            }
+            events = [{
                 "event_id": str(uuid.uuid4()),
                 "event_type": "stock.unmatched_receipt",
                 "event_version": 1,
@@ -137,23 +126,24 @@ def handle_purchase_received(
                     "description": event_data.get("description", ""),
                     "quantity": quantity,
                 },
-            }
-        ]
+            }]
+            processed.add(event_id)
+            return events
 
-    # ---------------------------------------------------------------------
-    # Match found – delegate to receipt fulfilment logic
-    # ---------------------------------------------------------------------
-    return fulfill_receipt(
-        part_id=part_id,
-        quantity=quantity,
-        purchase_line_id=purchase_line_id,
-        unit_cost=unit_cost,
-        currency=event_data.get("currency", "MXN"),
-        work_order_code=event_data.get("work_order_code"),
-        occurred_at=occurred_at,
-        state=state,
-        locations=state.get("locations", {}),
-    )
+        # Si falta U-100, esto lanza LookupError y no se marca como procesado
+        events = fulfill_receipt(
+            part_id=part_id,
+            quantity=quantity,
+            purchase_line_id=purchase_line_id,
+            unit_cost=unit_cost,
+            currency=event_data.get("currency", "MXN"),
+            work_order_code=event_data.get("work_order_code"),
+            occurred_at=occurred_at,
+            state=state,
+            locations=state.get("locations", {}),
+        )
+        processed.add(event_id)
+        return events
 
 # ---------------------------------------------------------------------------
 # 3. Receipt fulfilment – Rules 11, 12, 18
@@ -178,13 +168,12 @@ def fulfill_receipt(
     # ---------------------------------------------------------------------
     location_id = get_receiving_location_id(locations)
     if location_id is None:
-        # Location catalogue not yet available – let the consumer retry later.
-        return []
-
+        raise LookupError("La ubicación U-100 todavía no llega; reintentar después")
     # ---------------------------------------------------------------------
     # Record the receipt movement (source of truth for stock balances)
     # ---------------------------------------------------------------------
     movement = {
+        "movement_id": state.get("next_mov_id", 1),
         "type": "receipt",
         "part_id": part_id,
         "location_id": location_id,
@@ -197,6 +186,7 @@ def fulfill_receipt(
     }
     with _state_lock:
         state.setdefault("movements", []).append(movement)
+        state["next_mov_id"] = movement["movement_id"] + 1
 
     output_events.append(
         {
@@ -227,6 +217,16 @@ def fulfill_receipt(
     def _emit_reservation_and_resolution(short: Dict[str, Any], qty: int, code_key: str) -> None:
         res_id = state.get("next_res_id", 1)
         state["next_res_id"] = res_id + 1
+        state.setdefault("reservations", {})[res_id] = {
+            "reservation_id": res_id,
+            "work_order_id": short.get("work_order_id"),
+            "work_order_code": short.get("work_order_code"),
+            "part_id": part_id,
+            "location_id": location_id,
+            "quantity": qty,
+            "status": "active",
+            "inspection_item_id": short.get("inspection_item_id"),
+        }
         # reservation event
         output_events.append(
             {
@@ -282,7 +282,7 @@ def fulfill_receipt(
                 alloc = min(remaining, short["quantity"])
                 short["quantity"] -= alloc
                 remaining -= alloc
-                code_key = short.get("work_order_code", f"WO-{short.get('work_order_id')}")
+                code_key = short.get("work_order_code") or f"WO-{short.get('work_order_id')}"                
                 _emit_reservation_and_resolution(short, alloc, code_key)
                 if remaining == 0:
                     break
@@ -308,26 +308,21 @@ def update_reorder_suggestion(
     occurred_at: str,
     state: Dict[str, Any],
 ) -> Optional[Dict[str, Any]]:
-    """Create or delete a ``stock.reorder_suggested`` event.
-    The suggestion includes:
-    * ``suggested_quantity`` – sum of open shortages **plus** any amount needed to reach the catalogue minimum (if defined).
-    * ``work_order_ids`` – distinct IDs of work orders waiting for the part.
-    """
+    """Calcula la sugerencia de compra de una pieza y emite stock.reorder_suggested."""
     state.setdefault("reorder_suggestions", {})
     shortages = state.get("shortages", {}).get(part_id, [])
     total_needed = sum(s["quantity"] for s in shortages if s["quantity"] > 0)
     work_order_ids = sorted({s.get("work_order_id") for s in shortages if s.get("quantity", 0) > 0 and s.get("work_order_id")})
 
-    # Minimum stock policy (optional – catalogue may contain ``minimum_quantity``)
-    catalog = state.get("catalog_parts", [])
+    # Mínimo de la pieza (opcional, si el catálogo trae minimum_quantity)
     min_qty = None
-    for p in catalog:
+    for p in state.get("catalog_parts", []):
         if p.get("part_id") == part_id:
             min_qty = p.get("minimum_quantity")
             break
+
     if min_qty is not None:
-        # Compute current stock from movements (only receipts are needed for this kata)
-        current_stock = sum(m["quantity"] for m in state.get("movements", []) if m["part_id"] == part_id and m["type"] == "receipt")
+        current_stock = sum(m["quantity"] for m in state.get("movements", []) if m["part_id"] == part_id)
         if current_stock < min_qty:
             total_needed = max(total_needed, min_qty - current_stock)
 
@@ -350,9 +345,9 @@ def update_reorder_suggestion(
                 "work_order_ids": work_order_ids,
             },
         }
-    else:
-        state["reorder_suggestions"].pop(part_id, None)
-        return None
+
+    state["reorder_suggestions"].pop(part_id, None)
+    return None
 
 # ---------------------------------------------------------------------------
 # 5. API helper functions (to be wired to FastAPI)
@@ -360,46 +355,49 @@ def update_reorder_suggestion(
 
 def list_unmatched_receipts(state: Dict[str, Any]) -> List[Dict[str, Any]]:
     """Return all unmatched receipt records."""
-    return list(state.get("unmatched_receipts", {}).values())
-
+    return [r for r in state.get("unmatched_receipts", {}).values() if r.get("status") != "resolved"]
 def resolve_unmatched(
     receipt_id: int,
     part_id: int,
     state: Dict[str, Any],
     occurred_at: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Manually resolve an unmatched receipt.
-    Raises ``KeyError`` if ``receipt_id`` does not exist – the HTTP layer should translate this to *404*.
+    """Relaciona a mano una recepción pendiente.
+    KeyError  -> 404 (no existe)
+    ValueError -> 409 (ya estaba resuelta)
+    Regresa {"movement": ..., "events": [...]}; la API debe publicar los events.
     """
-    receipts = state.get("unmatched_receipts", {})
-    if receipt_id not in receipts:
-        raise KeyError(f"Receipt {receipt_id} not found")
-    receipt = receipts.pop(receipt_id)
-    ts = occurred_at or now_iso()
-    # Re‑use fulfilment logic – it will emit the appropriate events.
-    fulfill_receipt(
-        part_id=part_id,
-        quantity=receipt["quantity"],
-        purchase_line_id=receipt["purchase_line_id"],
-        unit_cost=receipt.get("unit_price") or "0.00",
-        currency=receipt.get("currency") or "MXN",
-        work_order_code=receipt.get("work_order_code"),
-        occurred_at=ts,
-        state=state,
-        locations=state.get("locations", {}),
-    )
-    mov_id = state.get("next_mov_id", 1)
-    state["next_mov_id"] = mov_id + 1
-    return {
-        "movement_id": mov_id,
-        "type": "receipt",
-        "part_id": part_id,
-        "location_id": get_receiving_location_id(state.get("locations", {})),
-        "quantity": receipt["quantity"],
-        "occurred_at": ts,
-        "reference": f"PR-{receipt.get('purchase_line_id')}",
-    }
+    with _state_lock:
+        receipt = state.get("unmatched_receipts", {}).get(receipt_id)
+        if receipt is None:
+            raise KeyError(receipt_id)
+        if receipt.get("status") == "resolved":
+            raise ValueError(f"La recepción {receipt_id} ya fue resuelta")
 
+        events = fulfill_receipt(
+            part_id=part_id,
+            quantity=receipt["quantity"],
+            purchase_line_id=receipt["purchase_line_id"],
+            unit_cost=receipt.get("unit_price") or "0.00",
+            currency=receipt.get("currency") or "MXN",
+            work_order_code=receipt.get("work_order_code"),
+            occurred_at=occurred_at or now_iso(),
+            state=state,
+            locations=state.get("locations", {}),
+        )
+        receipt["status"] = "resolved"
+
+        mov = state["movements"][-1]
+        movement = {
+            "movement_id": mov["movement_id"],
+            "type": "receipt",
+            "part_id": part_id,
+            "location_id": mov["location_id"],
+            "quantity": mov["quantity"],
+            "occurred_at": mov["occurred_at"],
+            "reference": f"purchase_line:{receipt['purchase_line_id']}",
+        }
+        return {"movement": movement, "events": events}
 def list_reorder_suggestions(
     state: Dict[str, Any],
     catalog: Optional[List[Dict[str, Any]]] = None,
