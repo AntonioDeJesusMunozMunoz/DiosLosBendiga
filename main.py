@@ -60,21 +60,6 @@ class IssueRequest(BaseModel):
     quantity: int = Field(ge=1)
     issued_by: Union[int, str]
 
-class TransferRequest(BaseModel):
-    part_id: int
-    from_location_id: int
-    to_location_id: int
-    quantity: int = Field(ge=1)
-
-class CountLine(BaseModel):
-    part_id: int
-    counted_quantity: int = Field(ge=0)
-
-class CountRequest(BaseModel):
-    location_id: int
-    reason: str
-    lines: list[CountLine]
-
 @dev1_router.post("/issues", status_code=201)
 def post_issue(req: IssueRequest):
     if req.part_id == 999 or req.work_order_code == "UNKNOWN":
@@ -86,31 +71,6 @@ def post_issue(req: IssueRequest):
         "location_id": req.location_id, "quantity": -req.quantity,
         "occurred_at": "2026-10-06T12:00:00Z", "reference": req.work_order_code,
     }
-
-@dev1_router.post("/transfers", status_code=201)
-def post_transfer(req: TransferRequest):
-    if req.part_id == 999 or req.from_location_id == 999:
-        raise HTTPException(404, "Pieza o ubicación no encontrada")
-    if req.quantity > 50:
-        raise HTTPException(409, "Saldo insuficiente en ubicación origen")
-    return {
-        "movement_id": 102, "type": "transfer_out", "part_id": req.part_id,
-        "location_id": req.from_location_id, "quantity": -req.quantity,
-        "occurred_at": "2026-10-06T12:05:00Z",
-        "reference": f"TR-{req.from_location_id}-{req.to_location_id}",
-    }
-
-@dev1_router.post("/counts", status_code=201)
-def post_count(req: CountRequest):
-    if not req.reason or not req.reason.strip():
-        raise HTTPException(422, "El motivo del conteo es obligatorio")
-    if req.location_id == 999:
-        raise HTTPException(404, "Ubicación no encontrada")
-    adjustments = [
-        {"part_id": line.part_id, "delta": line.counted_quantity - 10}
-        for line in req.lines if line.counted_quantity != 10
-    ]
-    return {"adjustments": adjustments}
 
 app.include_router(dev1_router)
 

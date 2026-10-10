@@ -25,7 +25,7 @@ def run_tests():
         import json
 
         print(f"--> Testing live server at {url_base}")
-        print("    (reminder: run 'py -3 seed.py' against the same DB before this)")
+        print("    (reminder: transfers and counts now change the database, so seed.py must be run again before each live run)")
 
         def request(method: str, path: str, body: dict = None) -> tuple[int, Any]:
             req = urllib.request.Request(
@@ -165,7 +165,7 @@ def run_tests():
     st, data = request("POST", "/issues", {"part_id": 1001})
     assert_error_detail(st, data, 422, "POST /issues invalid body 422")
 
-    # ---- 4. Transfers (fake) ----
+    # ---- 4. Transfers (real) ----
     print("\n--- 4. Transfers Endpoints ---")
     tr_payload = {"part_id": 1001, "from_location_id": 100, "to_location_id": 101, "quantity": 5}
     st, data = request("POST", "/transfers", tr_payload)
@@ -178,7 +178,7 @@ def run_tests():
     st, data = request("POST", "/transfers", {**tr_payload, "quantity": 99})
     assert_error_detail(st, data, 409, "POST /transfers excess quantity 409")
 
-    # ---- 5. Counts (fake) ----
+    # ---- 5. Counts (real) ----
     print("\n--- 5. Counts Endpoints ---")
     count_payload = {
         "location_id": 101, "reason": "conteo ciclico mensual",
@@ -189,9 +189,14 @@ def run_tests():
     check("POST /counts response has adjustments", "adjustments" in data, f"{data}")
     check("Adjustments item has part_id and delta",
           {"part_id", "delta"}.issubset(data["adjustments"][0].keys()), f"{data}")
+    check("POST /counts adjustments == [{'part_id': 1001, 'delta': -5}]",
+          data.get("adjustments") == [{"part_id": 1001, "delta": -5}], f"{data}")
 
     st, data = request("POST", "/counts", {**count_payload, "reason": "   "})
     assert_error_detail(st, data, 422, "POST /counts empty reason 422")
+
+    st, data = request("POST", "/counts", {**count_payload, "location_id": 999})
+    assert_error_detail(st, data, 404, "POST /counts unknown location 404")
 
     # ---- 6. Materials (fake Dev 2) ----
     print("\n--- 6. Materials Endpoints ---")
