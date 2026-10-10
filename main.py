@@ -1,21 +1,23 @@
 """
 main.py - Inventory Service API
-Real endpoints: GET /parts/{id}/availability, GET /parts/{id}/ledger  (dev1_api.py)
-Fake  endpoints: POST /issues, /transfers, /counts  (Dev 1 stubs)
-                 GET+POST for Dev 2 and Dev 3 (stubs, replaced later)
+Real endpoints: Dev 1 (availability, ledger, transfers, counts, issues in dev1_api.py)
+                Dev 2 (materials, shortages in dev2_api.py)
+Fake endpoints: Dev 3 stubs (replaced later)
 """
 from contextlib import asynccontextmanager
-from dev2_api import router as real_dev2_router
-import db, inventory_handlers, kafka_consumer
-
-from typing import Optional, Union
+from typing import Optional
 from fastapi import FastAPI, APIRouter, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from starlette.exceptions import HTTPException as StarletteHTTPException
+
+import db
+import inventory_handlers
+import kafka_consumer
 from dev1_api import router as dev1_real_router
+from dev2_api import router as real_dev2_router
 from dev3_api import router as dev3_real_router
 
 @asynccontextmanager
@@ -31,10 +33,12 @@ app = FastAPI(title="Servicio de inventario del taller", version="1.0.0", lifesp
 
 # Ensure tables exist both at import time (in-process tests) and at ASGI startup
 db.init_db()
+inventory_handlers.init_dev2_schema()
 
 @app.on_event("startup")
 def _startup():
     db.init_db()
+    inventory_handlers.init_dev2_schema()
 
 # ---------- CORS --------------------------------------------------------------
 app.add_middleware(
@@ -58,32 +62,11 @@ async def _validation_handler(request: Request, exc: RequestValidationError):
 async def _http_handler(request: Request, exc: StarletteHTTPException):
     return JSONResponse(status_code=exc.status_code, content={"detail": str(exc.detail)})
 
-# ==================== DEV 1 — real GET routes (dev1_api.py) ===================
+# ==================== DEV 1 — real routes (dev1_api.py) =======================
 app.include_router(dev1_real_router)
 
-# ==================== DEV 1 — fake POST stubs =================================
-dev1_router = APIRouter(tags=["Dev 1 - Ledger & Stock (Fake stubs)"])
-
-class IssueRequest(BaseModel):
-    work_order_code: str
-    part_id: int
-    location_id: int
-    quantity: int = Field(ge=1)
-    issued_by: Union[int, str]
-
-@dev1_router.post("/issues", status_code=201)
-def post_issue(req: IssueRequest):
-    if req.part_id == 999 or req.work_order_code == "UNKNOWN":
-        raise HTTPException(404, "Pieza u orden no encontrada")
-    if req.quantity > 50:
-        raise HTTPException(409, "Saldo insuficiente en la ubicación")
-    return {
-        "movement_id": 101, "type": "issue", "part_id": req.part_id,
-        "location_id": req.location_id, "quantity": -req.quantity,
-        "occurred_at": "2026-10-06T12:00:00Z", "reference": req.work_order_code,
-    }
-
-app.include_router(dev1_router)
+# ==================== DEV 2 — real routes (dev2_api.py) =======================
+app.include_router(real_dev2_router)
 
 # ==================== DEV 3 fake stubs =====================================
 dev3_router = APIRouter(tags=["Dev 3 - Purchasing & Matching (Fake stubs)"])
@@ -125,8 +108,4 @@ def post_resolve(id: str, req: ResolveRequest):
         "location_id": req.location_id or 100, "quantity": 3,
         "occurred_at": "2026-10-07T14:00:00Z", "reference": f"RESOLVED-{id}",
     }
-app.include_router(dev1_router)
-
-app.include_router(dev1_router)
-app.include_router(real_dev2_router)
 app.include_router(dev3_real_router)

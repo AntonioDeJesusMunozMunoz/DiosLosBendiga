@@ -21,6 +21,7 @@ DB_PATH = os.environ.get("INVENTORY_DB", "inventory.db")
 _conn = sqlite3.connect(DB_PATH, check_same_thread=False, isolation_level=None)
 _conn.row_factory = sqlite3.Row          # rows behave like dicts: row["on_hand"]
 _conn.execute("PRAGMA journal_mode=WAL")  # readers don't block the writer
+_conn.execute("PRAGMA synchronous=NORMAL")
 _conn.execute("PRAGMA busy_timeout=5000")
 _lock = threading.RLock()                 # one thread at a time touches the connection
 

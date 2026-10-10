@@ -14,6 +14,12 @@ import sys
 import tempfile
 import json
 
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 # ── 1. Boot the temp DB before importing db or main ─────────────────────────
 _tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
 _tmp.close()

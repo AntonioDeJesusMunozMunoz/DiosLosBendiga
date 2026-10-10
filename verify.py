@@ -25,7 +25,7 @@ def run_tests():
         import json
 
         print(f"--> Testing live server at {url_base}")
-        print("    (reminder: transfers and counts now change the database, so seed.py must be run again before each live run)")
+        print("    (reminder: issues, transfers and counts now change the database, so seed.py must be run again before each live run)")
 
         def request(method: str, path: str, body: dict = None) -> tuple[int, Any]:
             req = urllib.request.Request(
@@ -146,7 +146,7 @@ def run_tests():
     st, data = request("GET", "/parts/999/ledger")
     assert_error_detail(st, data, 404, "Unknown part ledger 404")
 
-    # ---- 3. Issues (fake) ----
+    # ---- 3. Issues (now real) ----
     print("\n--- 3. Issues Endpoints ---")
     issue_payload = {"work_order_code": "R061026001", "part_id": 1001,
                      "location_id": 101, "quantity": 2, "issued_by": "operador-1"}
@@ -155,9 +155,21 @@ def run_tests():
     req_move = {"movement_id", "type", "part_id", "location_id", "quantity", "occurred_at", "reference"}
     check("Movement required fields in issue", req_move.issubset(data.keys()), f"{data.keys()}")
     check("Quantity is negative in movement", data["quantity"] == -2, f"{data['quantity']}")
+    check("Type is 'issue' in movement", data["type"] == "issue", f"{data['type']}")
+    check("Reference is order code in movement", data["reference"] == "R061026001", f"{data['reference']}")
+
+    # Right after it, availability for 1001 must show on_hand 16, reserved 1, available 15
+    st, avail_data = request("GET", "/parts/1001/availability")
+    check("GET /parts/1001/availability after issue 200", st == 200, f"Got {st}: {avail_data}")
+    check("Availability on_hand is 16 after issue", avail_data["on_hand"] == 16, f"{avail_data}")
+    check("Availability reserved is 1 after issue", avail_data["reserved"] == 1, f"{avail_data}")
+    check("Availability available is 15 after issue", avail_data["available"] == 15, f"{avail_data}")
 
     st, data = request("POST", "/issues", {**issue_payload, "part_id": 999})
     assert_error_detail(st, data, 404, "POST /issues unknown part 404")
+
+    st, data = request("POST", "/issues", {**issue_payload, "work_order_code": "R000000000"})
+    assert_error_detail(st, data, 404, "POST /issues unknown order 404")
 
     st, data = request("POST", "/issues", {**issue_payload, "quantity": 99})
     assert_error_detail(st, data, 409, "POST /issues excess quantity 409")
@@ -189,8 +201,8 @@ def run_tests():
     check("POST /counts response has adjustments", "adjustments" in data, f"{data}")
     check("Adjustments item has part_id and delta",
           {"part_id", "delta"}.issubset(data["adjustments"][0].keys()), f"{data}")
-    check("POST /counts adjustments == [{'part_id': 1001, 'delta': -5}]",
-          data.get("adjustments") == [{"part_id": 1001, "delta": -5}], f"{data}")
+    check("POST /counts adjustments == [{'part_id': 1001, 'delta': -3}]",
+          data.get("adjustments") == [{"part_id": 1001, "delta": -3}], f"{data}")
 
     st, data = request("POST", "/counts", {**count_payload, "reason": "   "})
     assert_error_detail(st, data, 422, "POST /counts empty reason 422")
