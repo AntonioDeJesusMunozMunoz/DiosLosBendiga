@@ -1,0 +1,18 @@
+[
+  {
+    "part_id": 1,
+    "sku": "7014 CTA/P4",
+    "name": "Rodamiento de precisión",
+    "minimum_quantity": 10
+  },
+  {
+    "part_id": 2,
+    "sku": "TORNILLO 6X12",
+    "name": "Tornillo cabeza Allen"
+  },
+  {
+    "part_id": 3,
+    "sku": "ARANDELA CON SELLOS 8 MM",
+    "name": "Arandela sellada"
+  }
+]

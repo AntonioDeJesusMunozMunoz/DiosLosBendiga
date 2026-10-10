@@ -1,0 +1,4 @@
+{
+  "1": { "location_id": 100, "code": "U-100", "description": "Bahía de recepción" },
+  "2": { "location_id": 200, "code": "W-200", "description": "Almacén principal" }
+}
