@@ -13,6 +13,7 @@ const valOrder = document.getElementById('val-order');
 const valLocation = document.getElementById('val-location');
 const valSku = document.getElementById('val-sku');
 const alertBox = document.getElementById('alert-box');
+const inputQty = document.getElementById('input-qty');
 const confirmBtn = document.getElementById('confirmBtn');
 const toggleScanBtn = document.getElementById('toggleScanBtn');
 
@@ -115,6 +116,8 @@ function validateAndProcessCode(code) {
         showAlert(`✅ Pieza capturada: ${code}. ¡Listo para confirmar!`, "success");
     }
 }
+
+function modifyQty(delta) { data.quantity = Math.max(1, (data.quantity || 1) + delta); document.getElementById('qty-display').textContent = data.quantity; }
 
 confirmBtn.addEventListener('click', async () => {
     showAlert("Enviando datos al servidor...", "info");

@@ -10,7 +10,6 @@ let currentStep = 'from';
 const valFrom = document.getElementById('val-from');
 const valTo = document.getElementById('val-to');
 const valPart = document.getElementById('val-part');
-const inputQty = document.getElementById('input-qty');
 const alertBox = document.getElementById('alert-box');
 const confirmBtn = document.getElementById('confirmBtn');
 const toggleScanBtn = document.getElementById('toggleScanBtn');
@@ -109,7 +108,6 @@ function validateAndProcessCode(code) {
 }
 
 confirmBtn.addEventListener('click', async () => {
-    transferData.quantity = parseInt(inputQty.value) || 1;
     showAlert("Procesando transferencia...", "info");
 
     try {
@@ -133,3 +131,5 @@ function showAlert(msg, type) {
     alertBox.textContent = msg;
     alertBox.className = type;
 }
+
+function modifyQty(delta) { transferData.quantity = Math.max(1, (transferData.quantity || 1) + delta); document.getElementById('qty-display').textContent = transferData.quantity; }
