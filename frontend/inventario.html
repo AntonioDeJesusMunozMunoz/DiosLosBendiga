@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Existencias y Kardex | ROCEEL</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="index.html"><img src="assets/roceel-logo.jpg"
+          alt="Logo ROCEEL"><span><strong>ROCEEL</strong><small>Almacén inteligente</small></span></a>
+      <div class="nav-label">Operación</div>
+      <button class="menu-toggle" id="menuToggle" aria-label="Mostrar navegación" aria-expanded="false">☰ Menú</button>
+      <nav id="mainNav" aria-label="Navegación principal">
+        <a href="index.html" class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 3h7v7H3z M14 3h7v4h-7z M14 10h7v11h-7z M3 14h7v7H3z" />
+          </svg><span>Resumen</span></a>
+        <a href="ordenes.html" class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M8 6h13 M8 12h13 M8 18h13 M3 6h.01 M3 12h.01 M3 18h.01" />
+          </svg><span>Órdenes de trabajo</span></a>
+        <a href="inventario.html" class="active" aria-current="page"><svg viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 4h16v16H4z M4 9h16 M9 4v16" />
+          </svg><span>Existencias y Kardex</span></a>
+        <a href="faltantes.html" class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 5h18v14H3z M3 7l9 6 9-6" />
+          </svg><span>Compras por resolver</span></a>
+      </nav>
+      <div class="sidebar-footer">Sistema de almacén · ROCEEL</div>
+    </aside>
+    <div class="main-area">
+      <div class="topbar"><span class="breadcrumb">ROCEEL / Existencias y Kardex</span><span class="topbar-tag">Almacén
+          inteligente</span></div>
+      <main class="container">
+        <section class="welcome">
+          <div>
+            <h1>Existencias y Kardex</h1>
+          </div>
+        </section>
+        <form class="search-panel" id="availabilityForm"><label for="partId">Pieza (ID, SKU o nombre)</label><input
+            id="partId" list="partSuggestions" inputmode="search" placeholder="Escribe o selecciona una pieza…"
+            autocomplete="off" required><datalist id="partSuggestions">
+            <option value="1001 — ROD-6204 — Rodamiento rígido 6204-2RS"></option>
+            <option value="1002 — RET-3552 — Retén radial 35x52x7 NBR"></option>
+            <option value="1003 — OR-028 — O-Ring Viton 28x2.5"></option>
+            <option value="1004 — TOR-M8-25 — Tornillo Allen M8x25 Grado 12.9"></option>
+          </datalist><button class="button" type="submit">Consultar existencias <span>→</span></button></form>
+        <section class="surface" id="generalStockSection">
+          <div class="surface-head">
+            <div>
+              <h2>Existencias</h2>
+            </div>
+            <div class="head-actions"><span class="count-pill" id="partsCount">Cargando piezas…</span><button
+                class="button button-outline" id="showAllParts" type="button" hidden>Mostrar todas</button></div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>SKU</th>
+                  <th>Descripción</th>
+                  <th>Existencia</th>
+                  <th>Reservado</th>
+                  <th>Disponible</th>
+                  <th>Estado</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="generalStockBody">
+                <tr>
+                  <td colspan="8" class="empty">Cargando existencias generales…</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <!--El catálogo visible es una lista inicial para la demo. Cuando el backend exponga
+            un endpoint de catálogo, podrá cargarse dinámicamente-->
+        </section>
+        <section class="metric-grid stock-metrics">
+          <article class="metric">
+            <div class="metric-icon slate">▦</div>
+            <div><span>Existencia física</span><strong id="onHand">—</strong></div>
+          </article>
+          <article class="metric">
+            <div class="metric-icon yellow">↔</div>
+            <div><span>Reservado</span><strong id="reserved">—</strong></div>
+          </article>
+          <article class="metric">
+            <div class="metric-icon green">✓</div>
+            <div><span>Disponible</span><strong id="available">—</strong></div>
+          </article>
+        </section>
+        <section class="surface">
+          <div class="surface-head">
+            <div>
+              <h2>Saldo por ubicación</h2>
+              <p class="muted">Selecciona una ubicación para revisar su saldo.</p>
+            </div><span class="count-pill" id="locationCount">— ubicaciones</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Ubicación</th>
+                  <th>Existencia</th>
+                  <th>Reservado</th>
+                  <th>Disponible</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="locationsBody">
+                <tr>
+                  <td colspan="5" class="empty">Consulta una pieza para mostrar sus ubicaciones.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <section class="surface ledger-section" id="ledgerSection">
+          <div class="surface-head">
+            <div>
+              <h2>Kardex de movimientos</h2>
+              <p class="muted" id="ledgerSubtitle">Selecciona “Ver Kardex” en una pieza consultada.</p>
+            </div><button class="button button-outline" id="refreshLedger" disabled>Actualizar Kardex</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Movimiento</th>
+                  <th>Cantidad</th>
+                  <th>Referencia</th>
+                  <th>Saldo posterior</th>
+                </tr>
+              </thead>
+              <tbody id="ledgerBody">
+                <tr>
+                  <td colspan="5" class="empty">No hay movimientos consultados.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+      <footer>ROCEEL <span>·</span> Almacén</footer>
+    </div>
+  </div>
+  <script src="js/app.js"></script>
+  <script src="js/inventario.js"></script>
+</body>
+
+</html>
