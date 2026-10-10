@@ -2,15 +2,17 @@
 main.py - Inventory Service API
 Real endpoints: Dev 1 (availability, ledger, transfers, counts, issues in dev1_api.py)
                 Dev 2 (materials, shortages in dev2_api.py)
-Fake endpoints: Dev 3 stubs (replaced later)
+                Dev 3 (unmatched-receipts, resolve, reorder-suggestions in dev3_api.py)
+Extras piso:    GET /scan, GET /work-orders (piso_api.py) para el escáner del celular
+Frontend:       carpeta frontend/ servida en /app  (ej. https://<IP>:8000/app/salida.html)
 """
 from contextlib import asynccontextmanager
-from typing import Optional
-from fastapi import FastAPI, APIRouter, HTTPException, Request
+from pathlib import Path
+from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 import db
@@ -19,6 +21,7 @@ import kafka_consumer
 from dev1_api import router as dev1_real_router
 from dev2_api import router as real_dev2_router
 from dev3_api import router as dev3_real_router
+from piso_api import router as piso_router
 
 @asynccontextmanager
 async def lifespan(app):
@@ -68,44 +71,17 @@ app.include_router(dev1_real_router)
 # ==================== DEV 2 — real routes (dev2_api.py) =======================
 app.include_router(real_dev2_router)
 
-# ==================== DEV 3 fake stubs =====================================
-dev3_router = APIRouter(tags=["Dev 3 - Purchasing & Matching (Fake stubs)"])
-
-class ResolveRequest(BaseModel):
-    part_id: int
-    location_id: Optional[int] = None
-
-@dev3_router.get("/reorder-suggestions")
-def get_reorder_suggestions():
-    return {
-        "items": [
-            {"part_id": 1004, "sku": "TOR-M8-25", "name": "Tornillo Allen M8x25 Grado 12.9",
-             "suggested_quantity": 10, "work_order_ids": [2002]}
-        ]
-    }
-
-@dev3_router.get("/unmatched-receipts")
-def get_unmatched_receipts():
-    return {
-        "items": [
-            {
-                "id": 1, "purchase_line_id": 801, "part_number": "UNKNOWN-BEARING-44",
-                "description": "Rodamiento desconocido recibido", "quantity": 3,
-                "unit_price": "250.00", "currency": "MXN",
-                "received_at": "2026-10-07T12:00:00Z", "work_order_code": "R061026001",
-            }
-        ]
-    }
-
-@dev3_router.post("/unmatched-receipts/{id}/resolve", status_code=200)
-def post_resolve(id: str, req: ResolveRequest):
-    if str(id) == "999" or req.part_id == 999:
-        raise HTTPException(404, "Recepción o pieza no encontrada")
-    if str(id) == "998":
-        raise HTTPException(409, "La recepción ya fue resuelta")
-    return {
-        "movement_id": 103, "type": "receipt", "part_id": req.part_id,
-        "location_id": req.location_id or 100, "quantity": 3,
-        "occurred_at": "2026-10-07T14:00:00Z", "reference": f"RESOLVED-{id}",
-    }
+# ==================== DEV 3 — real routes (dev3_api.py) =======================
 app.include_router(dev3_real_router)
+
+# ==================== PISO — escáner del celular (piso_api.py) ================
+app.include_router(piso_router)
+
+# ==================== FRONTEND — páginas en /app ===============================
+FRONTEND_DIR = Path(__file__).parent / "frontend"
+app.mount("/app", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+
+
+@app.get("/", include_in_schema=False)
+def _home():
+    return RedirectResponse("/app/salida.html")
