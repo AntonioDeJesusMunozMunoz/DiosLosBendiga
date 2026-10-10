@@ -33,12 +33,12 @@ def load(path):
             line = line.strip()
             if not line:
                 continue
-            obj = json.loads(line)
-            if "event_type" not in obj and "value" in obj:
-                obj = obj["value"] if isinstance(obj["value"], dict) else json.loads(obj["value"])
-            events.append((TOPIC_OF[obj["event_type"]], obj))
+            rec = json.loads(line)
+            if "event" in rec:   # simulator format: {"topic", "event", "replay_at"}
+                events.append((rec.get("topic") or TOPIC_OF[rec["event"]["event_type"]], rec["event"]))
+            else:                # bare envelope
+                events.append((TOPIC_OF[rec["event_type"]], rec))
     return events
-
 
 def main(path):
     db.init_db()

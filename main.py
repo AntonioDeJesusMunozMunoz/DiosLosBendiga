@@ -124,43 +124,7 @@ def post_count(req: CountRequest):
 
 app.include_router(dev1_router)
 
-# ==================== DEV 2 — fake stubs =====================================
-dev2_router = APIRouter(tags=["Dev 2 - Materials & Shortages (Fake stubs)"])
-
-@dev2_router.get("/work-orders/{code}/materials")
-def get_materials(code: str):
-    if code == "UNKNOWN":
-        raise HTTPException(404, "Orden de trabajo no encontrada")
-    return {
-        "work_order_id": 2001, "code": code,
-        "lines": [
-            {"inspection_item_id": 701, "bom_line_id": 501, "part_id": 1001,
-             "name": "Rodamiento rígido 6204-2RS", "required": 5, "reserved": 3, "issued": 2, "missing": 0},
-            {"inspection_item_id": 702, "bom_line_id": 502, "part_id": 1004,
-             "name": "Tornillo Allen M8x25 Grado 12.9", "required": 4, "reserved": 0, "issued": 0, "missing": 4},
-        ],
-    }
-
-@dev2_router.get("/shortages")
-def get_shortages(work_order_code: Optional[str] = None, part_id: Optional[int] = None):
-    all_shortages = [
-        {"work_order_id": 2002, "work_order_code": "R061026002", "part_id": 1004,
-         "name": "Tornillo Allen M8x25 Grado 12.9", "missing_quantity": 4,
-         "inspection_item_id": 702, "opened_at": "2026-10-06T11:00:00Z"},
-        {"work_order_id": 2002, "work_order_code": "R061026002", "part_id": None,
-         "name": "Kit especial sin identificar", "missing_quantity": None,
-         "inspection_item_id": 703, "opened_at": "2026-10-06T11:05:00Z"},
-    ]
-    items = [
-        s for s in all_shortages
-        if (work_order_code is None or s["work_order_code"] == work_order_code)
-        and (part_id is None or s["part_id"] == part_id)
-    ]
-    return {"items": items}
-
-app.include_router(dev2_router)
-
-# ==================== DEV 3 — fake stubs =====================================
+# ==================== DEV 3 fake stubs =====================================
 dev3_router = APIRouter(tags=["Dev 3 - Purchasing & Matching (Fake stubs)"])
 
 class ResolveRequest(BaseModel):
