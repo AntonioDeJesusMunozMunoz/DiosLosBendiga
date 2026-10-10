@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Salida de Refacciones - Taller</title>
+    <link rel="stylesheet" href="css/1-c.css">
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+</head>
+<body>
+    <div class="phone">
+        <div class="phone-btn" id="phone-btn-1"></div>
+        <div class="phone-btn" id="phone-btn-2"></div>
+        <div class="phone-btn" id="phone-btn-3"></div>
+        
+        <div class="phone-screen">
+            <h1>Salida de Refacciones</h1>
+
+            <!-- Visor de la cámara adaptado y visible mediante JS -->
+            <div id="reader-container">
+                <div id="reader"></div>
+            </div>
+            
+            <button id="toggleScanBtn" class="action-btn scan-trigger">📷 Activar Escáner</button>
+
+            <!-- Tarjetas independientes con evento onclick -->
+            <div class="scan-card active-target" data-field="order" onclick="setStep('order')">
+                <label>1. ORDEN DE TRABAJO</label>
+                <div class="value" id="val-order">Toca para escanear orden (ej. R061026012)</div>
+            </div>
+
+            <div class="scan-card" data-field="location" onclick="setStep('location')">
+                <label>2. UBICACIÓN FÍSICA</label>
+                <div class="value" id="val-location">Toca para escanear ubicación (ej. U-100)</div>
+            </div>
+
+            <div class="scan-card" data-field="sku" onclick="setStep('sku')">
+                <label>3. REFACCIÓN / SKU</label>
+                <div class="value" id="val-sku">Toca para escanear pieza (ej. 1001)</div>
+            </div>
+
+            <div class="scan-card" data-field="qty" style="display:flex; justify-content:space-between; align-items:center;">
+         <div>
+             <label>4. CANTIDAD</label>
+             <div id="qty-display" style="font-size:20px; font-weight:900; color:#2c3e50; margin-top:4px;">1</div>
+         </div>
+         <div style="display:flex; gap:8px;">
+             <button type="button" onclick="modifyQty(-1)" style="width:42px; height:42px; font-size:20px; font-weight:900; border-radius:8px; border:none; background:#e74c3c; color:#fff; cursor:pointer;">-</button>
+             <button type="button" onclick="modifyQty(1)" style="width:42px; height:42px; font-size:20px; font-weight:900; border-radius:8px; border:none; background:#27ae60; color:#fff; cursor:pointer;">+</button>
+         </div>
+     </div>
+
+            <button id="confirmBtn" class="action-btn confirm">CONFIRMAR SALIDA</button>
+
+            <div id="alert-box"></div>
+        </div>
+
+        <nav>
+            <ul>
+                <li class="active" onclick="location.href='salida.html'">Piso</li>
+                <li onclick="location.href='transferencias.html'">Almacén</li>
+                <li onclick="location.href='conteo.html'">Conteo</li>
+            </ul>
+        </nav>
+    </div>
+
+    <script src="salida.js"></script>
+</body>
+</html>
