@@ -77,3 +77,26 @@ Los buscadores de Órdenes e Inventario incluyen sugerencias mediante `datalist`
 - Se agregaron notificaciones flotantes compartidas para alertas operativas y errores de conexión/consulta; pueden cerrarse manualmente y desaparecen automáticamente.
 - La prioridad actual es heurística: no es un modelo de IA ni un detector de patrones históricos. Para detectar tendencias de consumo, estacionalidad o piezas recurrentemente problemáticas, el backend deberá exponer historial de movimientos/consumo y acordar reglas o un modelo analítico.
 - La alerta de stock mínimo solo puede determinarse de forma fiable si la API entrega existencias y el umbral mínimo de la pieza. El contrato actual de sugerencias no garantiza esos campos; no se debe presentar una inferencia como dato oficial si no vienen del backend.
+
+---
+
+# App de piso (Frontend 1, celular)
+
+Pantallas para el técnico con el celular. Leen las etiquetas Code 128 con la cámara, sin teclear:
+
+- `salida.html`: salida de refacciones contra orden (`POST /issues`). La orden se escanea o se elige de la lista; muestra el material de la orden y sugiere la cantidad reservada.
+- `transferencias.html`: mover entre estantes (`POST /transfers`). La primera ubicación escaneada es el origen y la segunda el destino.
+- `conteo.html`: conteo cíclico (`POST /counts`). Cada lectura de una pieza suma 1; el motivo es obligatorio.
+- `js/piso.js`: cámara (html5-qrcode 2.3.8), beep, pantalla verde/roja y `GET /scan`.
+- `css/piso.css`: estilos de las tres pantallas.
+
+La app reconoce sola qué se escaneó con `GET /scan?code=...` (`piso_api.py`): ubicación (`U-100`), orden (`R...`) o pieza (sku tal cual, `P-24`, o sku sin espacios en mayúsculas). Si un sku es de dos piezas, pide elegir.
+
+## Abrirla en el celular
+
+1. El servidor sirve esta carpeta en `/app`. Levántalo con https (la cámara del celular solo abre en https):
+   `python -m uvicorn main:app --host 0.0.0.0 --port 8000 --ssl-keyfile certs/key.pem --ssl-certfile certs/cert.pem`
+2. Conecta el celular al mismo WiFi o hotspot que la laptop.
+3. En el celular abre `https://<IP-de-la-laptop>:8000/app/salida.html`, acepta el aviso del certificado y da permiso de cámara.
+
+Para que funcione sin internet, guarda `html5-qrcode.min.js` en `js/vendor/` (ver `js/vendor/LEEME.txt`).

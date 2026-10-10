@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#045127">
+  <title>Contar · Piso ROCEEL</title>
+  <link rel="stylesheet" href="css/piso.css">
+</head>
+<body>
+  <header class="top">
+    <img src="assets/roceel-logo.jpg" alt="ROCEEL">
+    <div class="top-title"><strong>Conteo cíclico</strong><small>Ajuste por conteo físico en estante</small></div>
+    <a class="top-link" href="index.html">Panel</a>
+  </header>
+
+  <main class="page">
+    <section id="camera" class="camera" aria-label="Cámara">
+      <div id="reader"></div>
+      <div class="cam-bar"><span>Apunta a UNA etiqueta dentro del recuadro</span><strong id="lastRead">Leído: —</strong></div>
+    </section>
+    <button id="camBtn" class="btn cam" type="button">Activar cámara</button>
+    <p class="hint">Escanea el estante y luego las piezas. Para contar otra igual, quita la cámara de la etiqueta y vuelve a apuntar. Ajusta con − / +.</p>
+
+    <div class="steps">
+      <div class="step" id="stepLocation">
+        <div class="step-num">1</div>
+        <div class="step-body"><span class="step-label">Ubicación</span><span class="step-value" id="valLocation">Escanea la etiqueta del estante (ej. U-102)</span></div>
+        <button class="clear" data-clear="location" type="button" aria-label="Quitar ubicación">✕</button>
+      </div>
+      <div class="step" id="stepParts">
+        <div class="step-num">2</div>
+        <div class="step-body"><span class="step-label">Piezas</span><span class="step-value" id="valParts">Primero escanea el estante</span></div>
+      </div>
+    </div>
+
+    <section class="count-list">
+      <h2>Piezas contadas <span id="lineCount"></span></h2>
+      <div id="lines"><div class="empty">Escanea piezas para agregarlas.</div></div>
+    </section>
+
+    <section class="reason">
+      <h2>Motivo del conteo <span class="req">obligatorio</span></h2>
+      <div class="chips" id="reasonChips">
+        <button class="chip" type="button">Auditoría semanal</button>
+        <button class="chip" type="button">Diferencia visual</button>
+        <button class="chip" type="button">Pieza dañada</button>
+      </div>
+      <input type="text" id="reason" placeholder="O escribe otro motivo" aria-label="Motivo del conteo">
+    </section>
+
+    <button id="confirmBtn" class="btn primary big" type="button" disabled>Guardar ajuste</button>
+
+    <section class="result" id="result" hidden></section>
+
+    <details class="manual">
+      <summary>¿La cámara no lee? Escribir el código</summary>
+      <form id="manual" autocomplete="off">
+        <input type="text" placeholder="U-102, TORNILLO 6X12, P-24…" aria-label="Código">
+        <button class="btn" type="submit">Usar</button>
+      </form>
+    </details>
+  </main>
+
+  <nav class="tabs" aria-label="Pantallas de piso">
+    <a href="salida.html">Salida</a>
+    <a href="transferencias.html">Mover</a>
+    <a href="conteo.html" class="active">Contar</a>
+  </nav>
+
+  <div id="flash" class="flash" aria-live="assertive"></div>
+  <div id="toast" class="toast" aria-live="polite"></div>
+  <div id="sheet" class="sheet"></div>
+
+  <script src="js/vendor/html5-qrcode.min.js"></script>
+  <script>window.Html5Qrcode || document.write('<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"><\/script>');</script>
+  <script src="js/piso.js"></script>
+  <script src="js/conteo.js"></script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+Aqui va html5-qrcode.min.js (version 2.3.8) para que el escaner funcione sin internet.
+Descargalo con (PowerShell, en la carpeta del repo):
+Invoke-WebRequest https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js -OutFile frontend\js\vendor\html5-qrcode.min.js
+Si no esta, las paginas lo cargan de internet (unpkg).

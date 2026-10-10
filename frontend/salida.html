@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#045127">
+  <title>Salida · Piso ROCEEL</title>
+  <link rel="stylesheet" href="css/piso.css">
+</head>
+<body>
+  <header class="top">
+    <img src="assets/roceel-logo.jpg" alt="ROCEEL">
+    <div class="top-title"><strong>Salida de refacciones</strong><small>Retiro contra orden de trabajo</small></div>
+    <a class="top-link" href="index.html">Panel</a>
+  </header>
+
+  <main class="page">
+    <section id="camera" class="camera" aria-label="Cámara">
+      <div id="reader"></div>
+      <div class="cam-bar"><span>Apunta a UNA etiqueta dentro del recuadro</span><strong id="lastRead">Leído: —</strong></div>
+    </section>
+    <button id="camBtn" class="btn cam" type="button">Activar cámara</button>
+    <p class="hint">Escanea en cualquier orden: la app reconoce si es ubicación (U-…), pieza o una orden.</p>
+
+    <div class="steps">
+      <div class="step" id="stepOrder">
+        <div class="step-num">1</div>
+        <div class="step-body"><span class="step-label">Orden de trabajo</span><span class="step-value" id="valOrder">Escanea o elige de la lista</span></div>
+        <button class="chip" id="pickOrder" type="button">Lista</button>
+        <button class="clear" data-clear="order" type="button" aria-label="Quitar orden">✕</button>
+      </div>
+      <div class="step" id="stepLocation">
+        <div class="step-num">2</div>
+        <div class="step-body"><span class="step-label">Ubicación</span><span class="step-value" id="valLocation">Escanea la etiqueta del estante (ej. U-100)</span></div>
+        <button class="clear" data-clear="location" type="button" aria-label="Quitar ubicación">✕</button>
+      </div>
+      <div class="step" id="stepPart">
+        <div class="step-num">3</div>
+        <div class="step-body"><span class="step-label">Refacción</span><span class="step-value" id="valPart">Escanea la etiqueta de la pieza</span>
+          <span class="step-extra" id="stockInfo"></span></div>
+        <button class="clear" data-clear="part" type="button" aria-label="Quitar pieza">✕</button>
+      </div>
+    </div>
+
+    <div class="qty">
+      <span class="qty-label">Cantidad</span>
+      <button class="qty-btn" id="qtyMinus" type="button" aria-label="Menos">−</button>
+      <span class="qty-value" id="qtyValue">1</span>
+      <button class="qty-btn" id="qtyPlus" type="button" aria-label="Más">+</button>
+    </div>
+
+    <button id="confirmBtn" class="btn primary big" type="button" disabled>Confirmar salida</button>
+
+    <section class="materials" id="materials" hidden>
+      <h2>Material de la orden <span id="matCode"></span></h2>
+      <p class="hint">Toca una línea reservada para elegir esa pieza.</p>
+      <div id="matLines"></div>
+    </section>
+
+    <details class="manual">
+      <summary>¿La cámara no lee? Escribir el código</summary>
+      <form id="manual" autocomplete="off">
+        <input type="text" placeholder="U-100, TORNILLO 6X12, P-24, R061026012…" aria-label="Código">
+        <button class="btn" type="submit">Usar</button>
+      </form>
+    </details>
+  </main>
+
+  <nav class="tabs" aria-label="Pantallas de piso">
+    <a href="salida.html" class="active">Salida</a>
+    <a href="transferencias.html">Mover</a>
+    <a href="conteo.html">Contar</a>
+  </nav>
+
+  <div id="flash" class="flash" aria-live="assertive"></div>
+  <div id="toast" class="toast" aria-live="polite"></div>
+  <div id="sheet" class="sheet"></div>
+
+  <script src="js/vendor/html5-qrcode.min.js"></script>
+  <script>window.Html5Qrcode || document.write('<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"><\/script>');</script>
+  <script src="js/piso.js"></script>
+  <script src="js/salida.js"></script>
+</body>
+</html>
