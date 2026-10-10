@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Compras por resolver | ROCEEL</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="index.html"><img src="assets/roceel-logo.jpg"
+          alt="Logo ROCEEL"><span><strong>ROCEEL</strong><small>Almacén inteligente</small></span></a>
+      <div class="nav-label">Operación</div>
+      <button class="menu-toggle" id="menuToggle" aria-label="Mostrar navegación" aria-expanded="false">☰ Menú</button>
+      <nav id="mainNav" aria-label="Navegación principal">
+        <a href="index.html" class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 3h7v7H3z M14 3h7v4h-7z M14 10h7v11h-7z M3 14h7v7H3z" />
+          </svg><span>Resumen</span></a>
+        <a href="ordenes.html" class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M8 6h13 M8 12h13 M8 18h13 M3 6h.01 M3 12h.01 M3 18h.01" />
+          </svg><span>Órdenes de trabajo</span></a>
+        <a href="inventario.html" class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 4h16v16H4z M4 9h16 M9 4v16" />
+          </svg><span>Existencias y Kardex</span></a>
+        <a href="faltantes.html" class="active" aria-current="page"><svg viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 5h18v14H3z M3 7l9 6 9-6" />
+          </svg><span>Compras por resolver</span></a>
+      </nav>
+      <div class="sidebar-footer">Sistema de almacén · ROCEEL</div>
+    </aside>
+    <div class="main-area">
+      <div class="topbar"><span class="breadcrumb">ROCEEL / Compras por resolver</span><span class="topbar-tag">Almacén
+          inteligente</span></div>
+      <main class="container">
+        <section class="welcome">
+          <div>
+            <h1>Compras por resolver</h1>
+          </div><button class="button button-dark" id="refreshReceipts">↻ Actualizar</button>
+        </section>
+        <div id="receiptsMessage" class="message" role="status">Cargando recepciones pendientes…</div>
+        <section class="surface">
+          <div class="surface-head">
+            <div>
+              <h2>Recepciones sin relacionar</h2>
+              <p class="muted">Verifica el número de parte y la descripción antes de asignar el ID.</p>
+            </div><span class="count-pill" id="receiptListCount">0 pendientes</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Parte recibida</th>
+                  <th>Descripción del proveedor</th>
+                  <th>Cantidad</th>
+                  <th>Fecha</th>
+                  <th>Orden</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="receiptsBody">
+                <tr>
+                  <td colspan="6" class="empty">Cargando…</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+      <dialog id="resolveDialog" class="dialog">
+        <form id="resolveForm">
+          <div class="dialog-head">
+            <div>
+              <p class="eyebrow">ASIGNACIÓN MANUAL</p>
+              <h2>Relacionar recepción</h2>
+            </div><button type="button" id="closeDialog" class="close-button" aria-label="Cerrar">×</button>
+          </div>
+          <div class="receipt-summary" id="receiptSummary"></div>
+          <input type="hidden" id="receiptId">
+          <label for="catalogPartId">ID numérico de la pieza del catálogo</label><input id="catalogPartId" type="number"
+            min="1" required placeholder="Ej. 305">
+          <!--El contrato de la API no incluye una ruta de búsqueda de catálogo -->
+          <label for="locationId">ID de ubicación (opcional)</label><input id="locationId" type="number" min="1"
+            placeholder="Vacío = ubicación de recepción">
+          <div id="resolveMessage" class="message" role="status"></div>
+          <div class="dialog-actions"><button type="button" class="button button-outline"
+              id="cancelResolve">Cancelar</button><button type="submit" class="button">Confirmar relación</button></div>
+        </form>
+      </dialog>
+      <footer>ROCEEL <span>·</span> Almacén</footer>
+    </div>
+  </div>
+  <script src="js/app.js"></script>
+  <script src="js/faltantes.js"></script>
+</body>
+
+</html>

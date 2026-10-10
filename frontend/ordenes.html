@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Órdenes de trabajo | ROCEEL</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="index.html"><img src="assets/roceel-logo.jpg"
+          alt="Logo ROCEEL"><span><strong>ROCEEL</strong><small>Almacén inteligente</small></span></a>
+      <div class="nav-label">Operación</div>
+      <button class="menu-toggle" id="menuToggle" aria-label="Mostrar navegación" aria-expanded="false">☰ Menú</button>
+      <nav id="mainNav" aria-label="Navegación principal">
+        <a href="index.html" class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round"
+            stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 3h7v7H3z M14 3h7v4h-7z M14 10h7v11h-7z M3 14h7v7H3z" />
+          </svg><span>Resumen</span></a>
+        <a href="ordenes.html" class="active" aria-current="page"><svg viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M8 6h13 M8 12h13 M8 18h13 M3 6h.01 M3 12h.01 M3 18h.01" />
+          </svg><span>Órdenes de trabajo</span></a>
+        <a href="inventario.html" class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 4h16v16H4z M4 9h16 M9 4v16" />
+          </svg><span>Existencias y Kardex</span></a>
+        <a href="faltantes.html" class=""><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 5h18v14H3z M3 7l9 6 9-6" />
+          </svg><span>Compras por resolver</span></a>
+      </nav>
+      <div class="sidebar-footer">Sistema de almacén · ROCEEL</div>
+    </aside>
+    <div class="main-area">
+      <div class="topbar"><span class="breadcrumb">ROCEEL / Órdenes de trabajo</span><span class="topbar-tag">Almacén
+          inteligente</span></div>
+      <main class="container">
+        <section class="welcome">
+          <h1>Órdenes de trabajo</h1>
+        </section>
+        <form class="search-panel" id="orderForm"><label for="orderCode">Código de orden</label><input id="orderCode"
+            list="orderSuggestions" placeholder="Escribe o selecciona una orden…" autocomplete="off" required><datalist
+            id="orderSuggestions">
+            <option value="R061026001">Orden de demostración 1</option>
+            <option value="R061026002">Orden de demostración 2 · con faltantes</option>
+          </datalist><button class="button" type="submit">Consultar orden <span>→</span></button><button
+            class="button button-secondary" id="showAllOrders" type="button">Mostrar todas</button></form>
+        <section class="surface" id="ordersOverviewSection">
+          <div class="surface-head">
+            <div>
+              <h2>Órdenes de trabajo</h2>
+            </div><span class="count-pill" id="ordersOverviewCount">2 órdenes</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Código de orden</th>
+                  <th>Descripción</th>
+                  <th>Acción</th>
+                </tr>
+              </thead>
+              <tbody id="ordersOverviewBody">
+                <tr>
+                  <td colspan="3" class="empty">Cargando órdenes de demostración…</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <section class="surface" id="orderDetailsSection">
+          <div class="surface-head">
+            <div>
+              <h2 id="orderTitle">Materiales requeridos</h2>
+            </div><span class="count-pill" id="lineCount">0 renglones</span>
+          </div>
+          <div class="status-legend"><span><i class="dot reserved"></i>Reservado</span><span><i
+                class="dot shortage"></i>Faltante</span><span><i class="dot issued"></i>Entregado</span><span><i
+                class="dot customer"></i>Cliente / sin stock</span></div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Refacción</th>
+                  <th>Requerido</th>
+                  <th>Reservado</th>
+                  <th>Entregado</th>
+                  <th>Faltante</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody id="materialsBody">
+                <tr>
+                  <td colspan="6" class="empty">Aún no has consultado una orden.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <section class="surface" id="orderShortagesSection">
+          <div class="surface-head">
+            <h2>Faltantes de la orden</h2><span class="count-pill" id="shortageLineCount">—</span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Refacción</th>
+                  <th>Faltante</th>
+                  <th>Estado</th>
+                </tr>
+              </thead>
+              <tbody id="orderShortagesBody">
+                <tr>
+                  <td colspan="3" class="empty">Consulta una orden para ver sus faltantes abiertos.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+      <footer>ROCEEL <span>·</span> Almacén</footer>
+    </div>
+  </div>
+  <script src="js/app.js"></script>
+  <script src="js/ordenes.js"></script>
+</body>
+
+</html>
